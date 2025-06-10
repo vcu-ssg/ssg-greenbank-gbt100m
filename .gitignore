@@ -14,7 +14,7 @@ poetry.lock
 .ipynb_checkpoints/
 
 # === Data folders (large reproducible files) ===
-data/videos/
+data/videos/*.MP4
 data/frames/
 data/colmap/
 data/openmvg/
