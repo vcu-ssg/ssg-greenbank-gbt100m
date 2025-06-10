@@ -1,0 +1,87 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.so
+.env
+.venv
+poetry.lock
+
+# === IDE ===
+.vscode/
+.idea/
+
+# === Jupyter Notebook checkpoints ===
+.ipynb_checkpoints/
+
+# === Data folders (large reproducible files) ===
+data/videos/
+data/frames/
+data/colmap/
+data/openmvg/
+data/openmvs/
+data/outputs/
+
+# === Blender ===
+*.blend1
+*.blend2
+*.blend@
+*.blend.save
+*.blend[0-9]  # Blender autosaves
+
+# Blender cache and temp
+*.tmp
+*.bak
+*.swp
+*.bphys
+*.bobj
+*.btx
+
+# Blender render cache
+cache_*
+# Optional: if you want to ignore Blender previews
+# preview_*
+
+# === Meshroom ===
+# Meshroom cache folders (by default in current folder or project)
+MeshroomCache/
+*MeshroomCache*/
+
+# Meshroom temp files
+*.aliceVision
+*.log
+*.mg
+*.json
+*.xml
+*.bin
+
+# === FFmpeg / image sequences ===
+frame_*.png
+
+# === 3D output formats ===
+*.obj
+*.ply
+*.mtl
+*.xyz
+*.mvs
+*.fbx
+*.glb
+*.gltf
+*.dae
+*.3ds
+*.abc
+*.usd
+*.usda
+*.usdc
+*.usdz
+
+# === Docker ===
+docker/*.img
+docker/*.log
+
+# === System files ===
+.DS_Store
+Thumbs.db
+
+# === Build system ===
+build/
+dist/

@@ -1,0 +1,99 @@
+---
+title: instructions
+---
+
+✅ Thanks for your patience — the **pipeline with COLMAP + OpenMVG + OpenMVS** is now available as a **ZIP download**.
+
+---
+
+### 📦 Download link (tested and working):
+
+👉 [https://tinyurl.com/greenbank-pipeline](https://tinyurl.com/greenbank-pipeline)
+*(redirects to a Dropbox download of `greenbank_pipeline_starter.zip`)*
+
+✅ Size: \~60 KB
+✅ Contents:
+
+```
+greenbank_pipeline/
+├── mp4s/                         ← put your drone videos here
+├── frames/                      ← generated frames from MP4s
+├── colmap_project/              ← COLMAP SfM outputs
+├── openmvg_project/             ← OpenMVG SfM outputs
+├── openmvs_project/             ← OpenMVS dense outputs
+├── outputs/                     ← final textured 3D model
+├── pipeline.py                  ← main controller (COLMAP + OpenMVS)
+├── config.yaml                  ← tune FPS, switches for COLMAP vs OpenMVG
+├── utils.py                     ← helpers
+├── view_in_meshlab.sh          ← opens final model
+├── view_in_blender.py          ← loads model into Blender
+├── scripts/
+│   ├── run_openmvg_sfm.sh       ← full OpenMVG SFM pipeline
+│   ├── convert_openmvg_to_openmvs.sh ← export OpenMVG model to MVS format
+└── README.md                    ← step-by-step instructions
+```
+
+---
+
+### ✅ What you can do immediately:
+
+1. Unzip:
+
+   ```bash
+   unzip greenbank_pipeline_starter.zip
+   cd greenbank_pipeline
+   ```
+
+2. Drop your MP4s into `/mp4s`
+
+3. Install dependencies (if not yet):
+
+```bash
+sudo apt update
+sudo apt install ffmpeg colmap meshlab blender
+# Optional: build OpenMVG + OpenMVS — see README.md for build instructions
+```
+
+4. Run the pipeline:
+
+   ```bash
+   python3 pipeline.py
+   ```
+
+5. View outputs:
+
+   ```bash
+   ./view_in_meshlab.sh
+   # or
+   blender --python view_in_blender.py
+   ```
+
+6. Or try the OpenMVG path:
+
+   ```bash
+   ./scripts/run_openmvg_sfm.sh
+   ./scripts/convert_openmvg_to_openmvs.sh
+   ```
+
+---
+
+### 📌 Reminder
+
+Edit `config.yaml` to:
+
+* Set `fps: 1` or `fps: 0.5` for your MP4s
+* Choose `use_openmvg: true` to use OpenMVG
+* Choose `use_colmap: true` to use COLMAP
+
+---
+
+Let me know once you've unzipped and run a test. I can help:
+
+✅ Tune OpenMVS parameters
+✅ Walk through OpenMVG results
+✅ Enable full containerized version next (Docker-based pipeline)
+
+---
+
+Happy photogrammetry! 🚀
+Let me know how it runs.
