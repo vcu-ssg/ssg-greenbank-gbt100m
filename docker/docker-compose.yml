@@ -1,0 +1,30 @@
+services:
+
+  colmap:
+    image: colmap/colmap:latest
+    runtime: nvidia
+    volumes:
+      - ../data/frames:/images
+      - ../data/colmap:/workspace
+    command: bash
+
+  openmvg:
+    build:
+      context: .
+      dockerfile: Dockerfile.openmvg
+    runtime: nvidia
+    volumes:
+      - ../data/frames:/images
+      - ../data/openmvg:/workspace
+      
+    command: bash
+
+  openmvs:
+    build:
+      context: .
+      dockerfile: Dockerfile.openmvs
+    runtime: nvidia
+    volumes:
+      - ../data/frames:/images
+      - ../data/openmvs:/workspace
+    command: bash

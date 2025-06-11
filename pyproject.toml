@@ -1,15 +1,15 @@
-[project]
+[tool.poetry]
 name = "ssg-greenbank-gbt100m"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "John Leonard",email = "jdleonard@vcu.edu"}
-]
+authors = ["John Leonard <jdleonard@vcu.edu>"]
 readme = "README.md"
-requires-python = ">=3.13,<4.0"
-dependencies = [
-]
+packages = [{include = "scripts"}]
+# No "requires-python" here — put under [tool.poetry.dependencies]
 
+[tool.poetry.dependencies]
+python = ">=3.13,<4.0"
+click = ">=8.2.1,<9.0.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
