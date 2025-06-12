@@ -5,6 +5,8 @@ FROM nvidia/cuda:12.2.0-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=America/New_York
+ENV PATH="/usr/local/bin/OpenMVS:$PATH"
+
 
 # Install deps
 RUN apt-get update && apt-get install -y \
@@ -35,7 +37,22 @@ RUN cmake -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
     -DVCG_ROOT=/opt/VCG \
     -DCMAKE_CUDA_ARCHITECTURES=86\;89\;90 \
+    -DOpenMVS_BUILD_TESTS=OFF \
+    -DOpenMVS_USE_CUDA=ON \
+    -DOpenMVS_BUILD_TOOLS=ON \
+    -DOpenMVS_BUILD_DensifyPointCloud=ON \
+    -DOpenMVS_BUILD_ReconstructMesh=ON \
+    -DOpenMVS_BUILD_RefineMesh=ON \
+    -DOpenMVS_BUILD_TextureMesh=ON \
+    -DOpenMVS_BUILD_InterfaceVisualSFM=OFF \
     ../openMVS
 RUN make -j$(nproc) && make install
+
+
+# ----------------------------------------------------------------
+# Optional: Add user john with UID=1000 and GID=1000 for clean prompt
+# ----------------------------------------------------------------
+RUN groupadd -g 1000 john && useradd -m -u 1000 -g 1000 john
+
 
 CMD ["bash"]

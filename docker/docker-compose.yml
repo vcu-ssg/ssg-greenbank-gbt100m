@@ -4,8 +4,7 @@ services:
     image: colmap/colmap:latest
     runtime: nvidia
     volumes:
-      - ../data/frames:/images
-      - ../data/colmap:/workspace
+      - ../data:/data
     command: bash
 
   openmvg:
@@ -14,17 +13,14 @@ services:
       dockerfile: Dockerfile.openmvg
     runtime: nvidia
     volumes:
-      - ../data/frames:/images
-      - ../data/openmvg:/workspace
-      
+      - ../data:/data
     command: bash
 
   openmvs:
-    build:
-      context: .
-      dockerfile: Dockerfile.openmvs
-    runtime: nvidia
-    volumes:
-      - ../data/frames:/images
-      - ../data/openmvs:/workspace
-    command: bash
+      build:
+        context: .
+        dockerfile: Dockerfile.openmvs
+      runtime: nvidia
+      volumes:
+      - ../data:/data
+      command: bash

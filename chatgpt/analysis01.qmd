@@ -1,0 +1,123 @@
+---
+title: Initial analysis of drone video
+---
+
+
+### Summary of your log
+
+#### Rotations phase:
+
+✅ **#relative rotations**: 7048
+✅ **#global rotations**: 495 → but after connected components → 376 images used
+⚠️ Rotation residuals:
+
+* mean residual \~39°
+* median residual \~4°
+  👉 This is quite *high*. Typically for good Global SfM you want **median < 1-2°** and mean < 5-10°.
+
+⚠️ 10 connected components — the main one only has **376 images out of 497** → you already lost many images here.
+→ At this point the rotation graph is fragmented → warning sign.
+
+#### Translations phase:
+
+🚨 **#relative translation triplets estimated = 0**
+👉 This is a clear symptom of **degenerate geometry or inconsistent rotations** → the translation averaging cannot find enough well-constrained triplets.
+
+---
+
+### Why this is happening
+
+* You have a *dense match graph*, but your **camera path and scene geometry** are causing major problems.
+
+* The extremely high **rotation residual mean (39°)** tells us that **rotations are inconsistent** → this usually happens when:
+
+  * You have a lot of near-planar or circular drone paths → not enough "look in" and "look down".
+  * Some images have bad focal length EXIF → causes rotation mismatch.
+  * You have some duplicate frames → these confuse rotation estimation.
+
+* Because rotation estimation is weak, **translation estimation fails** (it depends on rotations being correct first).
+
+* The fact that only **376/497 images survive** to the largest component confirms that Global SfM is struggling.
+
+---
+
+### How to interpret this:
+
+✅ **The problem is not in your matching!**
+✅ **You do not need to "clean the images" — your matches are already very good.**
+❌ **The problem is in your *camera geometry*, not image features.**
+
+---
+
+### Typical drone path problem:
+
+* If your drone flew mainly in a **circle around the object**, and images are all looking "toward center", **Global SfM will fail** — it requires good *baseline variation*.
+* If your drone hovered and rotated (yaw) in place → also bad for SfM.
+* If your drone path covered **multiple altitudes**, **top-down and side views**, and used **slow frame extraction** → this helps.
+
+---
+
+### What should you do next?
+
+✅ **Switch to INCREMENTAL SfM** — it is more robust to this type of geometry.
+✅ Run your exact same pipeline, but:
+
+```bash
+--sfm_engine INCREMENTAL
+--match_file matches.f.txt
+```
+
+👉 Why FUNDAMENTAL? Because ESSENTIAL is only valid when:
+
+* you have correct camera intrinsics for all images,
+* EXIF is valid and consistent → often not the case with drone video frames.
+
+✅ **Use FUNDAMENTAL first for drone frames.**
+
+---
+
+### Is this expected?
+
+Yes:
+
+Global SfM:
+
+* excellent for **rigid scenes, photos taken at different angles**.
+* fails easily on **circular paths**, **video-derived frames**, **planar scenes**, **very symmetric structures**.
+
+Incremental SfM:
+
+* more robust, can "bootstrap" from pairs and add views progressively,
+* better suited for **drone captures unless you carefully planned for Global SfM**.
+
+---
+
+### Summary:
+
+✅ Your matching is good → proceed.
+✅ Your graph quality is good → proceed.
+⚠️ Your rotations are inconsistent → **Global SfM is failing as expected for this kind of data**.
+👉 **Run INCREMENTAL next — that is the designed fallback.**
+
+---
+
+### Final checklist:
+
+| Action                                                                           | Priority             |
+| -------------------------------------------------------------------------------- | -------------------- |
+| Switch to FUNDAMENTAL + INCREMENTAL                                              | 🚀 Critical          |
+| Verify focal length calibration                                                  | ✅ Important          |
+| Consider running frame extraction at *slightly slower* FPS to avoid oversampling | ✅ Helpful            |
+| Plan capture with **multi-altitude, multi-angle passes** for next flight         | 📅 For future runs   |
+| Use Global SfM only if you have such a capture                                   | 🚩 As a stretch goal |
+
+---
+
+Would you like:
+
+1️⃣ A **tuned INCREMENTAL pipeline template** for drone data,
+2️⃣ A **capture planning checklist** for future drone missions to make Global SfM more likely to succeed,
+3️⃣ An **automated Global/Incremental fallback pipeline** → try Global, fall back to Incremental if Global fails.
+
+Just say which you want 🚀.
+You are very close — your system is working perfectly — the issue is purely in the input geometry now!
