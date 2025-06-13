@@ -1,5 +1,5 @@
 import click
-from scripts.extract_frames import extract_frames_from_file, extract_frames_from_folder
+from scripts.extract_frames import extract_frames_from_file, extract_frames_from_folder, process_folder_with_convert, process_folder_with_convert_workers
 from scripts import colmap_pipeline, openmvg_pipeline, convert_matches_g_to_dot
 
 @click.group()
@@ -15,10 +15,11 @@ def cli():
 @click.option("--capture", type=int, default=None, help="Capture X seconds of video")
 @click.option("--threads", type=int, default=8, help="FFMPEG threads to use")
 @click.option("--quality", type=int, default=2, help="JPG quality 1/31")
-def extract_frames(video_path, output_dir,fps,skip,capture,threads,quality):
+@click.option("--tag", default="tag", help="filename tag")
+def extract_frames(video_path, output_dir,fps,skip,capture,threads,quality,tag):
     """Extract frames from video"""
     extract_frames_from_file(video_path, output_dir, fps=fps,skip_seconds=str(skip),
-        threads=threads,quality=quality,capture_seconds=capture)
+        threads=threads,quality=quality,capture_seconds=capture,tag=tag)
 
 
 @cli.command()
@@ -71,7 +72,49 @@ def analyze_graph(matches_file, show_disconnected):
     """ Analyze dot file """
     convert_matches_g_to_dot.analyze_graph(matches_file, show_disconnected)
 
+
+@cli.command()
+@click.option("--input-folder", required=True, type=click.Path(exists=True, file_okay=False), help="Input folder with JPG images")
+@click.option("--output-folder", required=True, type=click.Path(file_okay=False), help="Output folder for processed images")
+@click.option("--sharpen", default="0x1.0", show_default=True, help="Sharpen amount, e.g. 0x1.0")
+@click.option("--contrast", default="5x50%", show_default=True, help="Sigmoidal contrast amount, e.g. 5x50%%")
+@click.option("--greyscale/--no-greyscale", default=False, help="Convert to greyscale")
+@click.option("--crop", default=None, help="Crop geometry, e.g. WxH+X+Y (optional)")
+@click.option("--tag", default="filtered", help="tag for file name (optional)")
+@click.option("--workers", default=8, help="Number of separate workers")
+def convert_images(input_folder, output_folder, sharpen, contrast, greyscale, crop, tag,workers ):
+    """Run ImageMagick convert on all images in input folder."""
+    click.echo(f"👉 Converting images in {input_folder} → {output_folder}")
+    click.echo(f"  Sharpen   : {sharpen}")
+    click.echo(f"  Contrast  : {contrast}")
+    click.echo(f"  Greyscale : {'ON' if greyscale else 'OFF'}")
+    click.echo(f"  Crop      : {crop if crop else 'None'}")
+    click.echo(f"  Tag       : {tag}")
+
+    process_folder_with_convert_workers(
+        input_folder,
+        output_folder,
+        sharpen=sharpen,
+        contrast=contrast,
+        greyscale=greyscale,
+        crop=crop,
+        tag=tag,
+        max_workers=workers
+    )
+
+    click.echo(f"✅ Done. Processed images in: {output_folder}")
     
-    
+
+
+@cli.command()
+@click.argument("image_path", type=click.Path(exists=True, file_okay=False))
+@click.argument("colmap_output_folder", type=click.Path())
+def run_colmap_pipeline_cli(image_path, colmap_output_folder):
+    """Run COLMAP pipeline on given image folder."""
+    from scripts.colmap_pipeline import run_colmap_pipeline
+    run_colmap_pipeline(image_path, colmap_output_folder)
+
+
+
 if __name__ == "__main__":
     cli()

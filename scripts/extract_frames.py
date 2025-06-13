@@ -3,6 +3,9 @@ import os
 import subprocess
 from pathlib import Path
 import glob
+import concurrent.futures
+import time
+
 
 DJI_FOCAL_LENGTHS = {
     "DJI FC3682": {
@@ -73,15 +76,16 @@ def add_camera_model_to_images(file_list, camera_model):
 
 
 
-def extract_frames_from_file(video_path, output_dir, fps=1, skip_seconds = 5, threads=8, quality=2, capture_seconds=None):
+def extract_frames_from_file(video_path, output_dir, fps=1.0, skip_seconds = 5, threads=8, quality=2, capture_seconds=None, tag="tag"):
     os.makedirs(output_dir, exist_ok=True)
     """ extract frames from file """
     
     video_name = Path(video_path).stem
-    output_template = os.path.join(output_dir, f"{video_name}_frame_%05d.jpg")
-
+    output_template = os.path.join(output_dir, f"{video_name}-{fps:4.2f}-{tag}-%05d.jpg")
+    video_mask = f"{video_name}-{fps:4.2f}-{tag}-*.jpg"
+    
     # Step 1: Record existing files before extraction
-    existing_files = set(Path(output_dir).glob(f"{video_name}_frame_*.jpg"))
+    existing_files = set(Path(output_dir).glob(video_mask))
     existing_files = ()
 
     # Step 2: Run ffmpeg to extract frames
@@ -104,7 +108,7 @@ def extract_frames_from_file(video_path, output_dir, fps=1, skip_seconds = 5, th
     subprocess.run(cmd, check=True)
 
     # Step 3: Identify newly created files
-    all_files = set(Path(output_dir).glob(f"{video_name}_frame_*.jpg"))
+    all_files = set(Path(output_dir).glob(video_mask))
     #new_files = sorted(list(all_files - existing_files))
     new_files = all_files
 
@@ -117,3 +121,148 @@ def extract_frames_from_folder(video_dir, output_dir, fps):
     for video_file in video_dir.glob("*.MP4"):
         print(f"\n=== Extracting frames from {video_file} ===")
         extract_frames_from_file(str(video_file), output_dir, fps)
+        
+        
+def process_image_with_convert(
+    file_name,
+    output_folder,
+    sharpen="0x1.0",
+    contrast="5x50%",
+    greyscale=False,
+    crop=None,
+    tag="filtered"
+):
+    """Run ImageMagick convert on a single file, outputting to a folder, with configurable sharpen, contrast, greyscale, and crop."""
+    
+    if not file_name or not os.path.isfile(file_name):
+        print(f"File not found: {file_name}")
+        return
+
+    os.makedirs(output_folder, exist_ok=True)
+
+    img_name = os.path.basename(file_name)
+    output_path = os.path.join(output_folder, img_name)
+
+
+    # Split by '-'
+    parts = img_name.split("-")
+
+    # Defensive check: ensure there are at least 4 parts
+    if len(parts) >= 4:
+        parts[2] = tag  # replace 3rd field (index 2)
+        img_name = "-".join(parts)
+    else:
+        raise ValueError(f"Filename format not as expected: {img_name}")
+
+    output_path = os.path.join(output_folder, img_name)
+
+    cmd = [
+        "convert",
+        file_name,
+        "-auto-level",
+        "-sigmoidal-contrast", contrast,
+        "-sharpen", sharpen
+    ]
+
+    # Optional crop
+    if crop:
+        cmd.extend(["-crop", crop])
+
+    # Optional greyscale
+    if greyscale:
+        cmd.extend(["-colorspace", "Gray"])
+
+    # Output
+    cmd.append(output_path)
+
+    print(f"Processing: {img_name} → {output_path}")
+    print(f"Command: {' '.join(cmd)}")
+    subprocess.run(cmd, check=True)
+    print("Done.")
+
+
+def process_folder_with_convert(
+    input_folder,
+    output_folder,
+    sharpen="0x1.0",
+    contrast="5x50%",
+    greyscale=False,
+    crop=None,
+    tag="filtered"
+):
+    """Process all .jpg files in input_folder using process_image_with_convert."""
+
+    # Glob all jpg files in input_folder
+    file_list = sorted(glob.glob(os.path.join(input_folder, "*.jpg")))
+
+    if not file_list:
+        print(f"No JPG images found in {input_folder}")
+        return
+
+    print(f"Processing {len(file_list)} images from {input_folder} → {output_folder}")
+
+    # Ensure output folder exists
+    os.makedirs(output_folder, exist_ok=True)
+
+    # Process each file
+    for file_name in file_list:
+        process_image_with_convert(
+            file_name,
+            output_folder,
+            sharpen=sharpen,
+            contrast=contrast,
+            greyscale=greyscale,
+            crop=crop,
+            tag=tag
+        )
+
+    print("All images processed.")
+
+
+def process_folder_with_convert_workers(
+    input_folder,
+    output_folder,
+    sharpen="0x1.0",
+    contrast="5x50%",
+    greyscale=False,
+    crop=None,
+    tag="filtered",
+    max_workers=8
+):
+    """Process all .jpg files in input_folder using process_image_with_convert (parallel), with timing."""
+
+    start_time = time.time()
+
+    # Glob all jpg files in input_folder
+    file_list = sorted(glob.glob(os.path.join(input_folder, "*.jpg")))
+
+    if not file_list:
+        print(f"No JPG images found in {input_folder}")
+        return
+
+    print(f"Processing {len(file_list)} images from {input_folder} → {output_folder} (parallel with {max_workers} workers)")
+
+    # Ensure output folder exists
+    os.makedirs(output_folder, exist_ok=True)
+
+    # Define wrapper function for executor
+    def process_single_file(file_name):
+        process_image_with_convert(
+            file_name,
+            output_folder,
+            sharpen=sharpen,
+            contrast=contrast,
+            greyscale=greyscale,
+            crop=crop,
+            tag=tag
+        )
+
+    # Use ThreadPoolExecutor to process in parallel
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        executor.map(process_single_file, file_list)
+
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+
+    print("All images processed.")
+    print(f"⏱️ Total time: {elapsed_time:.2f} seconds")

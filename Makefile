@@ -3,6 +3,17 @@
 
 .PHONY: init-folders extract-frames colmap-pipeline openmvg-openmvs-pipeline clean build-and-test
 
+# Macros
+
+ELEM1 = $(word $2,$(subst -, ,$1))
+ELEM2 = $(word $2,$(subst ., ,$(subst -, ,$1)))
+ELEM3 = $(word $2, $(subst /, ,$(subst -, ,$1)))
+
+define newline
+
+
+endef
+
 
 
 init-folders:
@@ -18,16 +29,76 @@ FPS = 0.50
 RATIO = 0.70
 ENGINE = INCREMENTAL
 
-video_folder = data/videos
-frame_folder = data/frames
-extract_options = --fps=$(FPS) --threads=16 --quality=2 --skip=5 --output-dir=$(frame_folder)
+
+## Extract frames block
 
 extract-frames.title = Extract frames from one or more videos.
-extract-frames:
-	poetry run python scripts/cli.py extract-frames $(video_folder)/DJI_0142.MP4 $(extract_options)
 
-colmap-pipeline:
-	poetry run python scripts/cli.py run-colmap
+video-roots := DJI_0145 DJI_0146 DJI_0150
+fps-roots := 1.20 1.00 0.80 0.60 0.40
+
+video-folder = data/videos
+frame-folder = data/frames
+poetry-base = poetry run python scripts/cli.py
+extract-options = --threads=16 --quality=2
+
+DJI_0145.skip = 20
+DJI_0146.skip = 60
+DJI_0150.skip = 30
+
+# expects targets like:  data/frames/DJI_0145/FPS-1.00-original
+define recipe-fps-folder
+	$(poetry-base) extract-frames $(video-folder)/$(call ELEM3,$(@),3).MP4 --output-dir=$(frame-folder)/$(call ELEM3,$(@),3)/FPS-$(call ELEM3,$(@),5)-$(call ELEM3,$(@),6) --skip=$($(call ELEM3,$(@),3).skip) --fps=$(call ELEM3,$(@),5) --tag=$(call ELEM3,$(@),6) $(extract-options)
+endef
+
+
+# expects targets like:  data/frames/DJI_0145/FPS-1.00-filtered
+define recipe-filtered-folder
+	$(poetry-base) convert-images --input-folder=$(call ELEM1,$(@),1)-$(call ELEM1,$(@),2)-original --output-folder=$(@) --tag=$(call ELEM1,$(@),3) --workers=8
+endef
+
+# expects targets like:  data/frames/DJI_0145/FPS-1.00-filtered
+define recipe-greyscale-folder
+	$(poetry-base) convert-images --input-folder=$(call ELEM1,$(@),1)-$(call ELEM1,$(@),2)-original --output-folder=$(@) --tag=$(call ELEM1,$(@),3) --workers=8 --greyscale
+endef
+
+original-targets := $(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(frame-folder)/$(video)/FPS-$(fps)-original))
+filtered-targets := $(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(frame-folder)/$(video)/FPS-$(fps)-filtered))
+greyscale-targets := $(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(frame-folder)/$(video)/FPS-$(fps)-greyscale))
+$(original-targets) : ; $(recipe-fps-folder)
+$(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(eval $(frame-folder)/$(video)/FPS-$(fps)-filtered : $(frame-folder)/$(video)/FPS-$(fps)-original ; $$(recipe-filtered-folder)$(newline))) )
+$(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(eval $(frame-folder)/$(video)/FPS-$(fps)-greyscale : $(frame-folder)/$(video)/FPS-$(fps)-original ; $$(recipe-greyscale-folder)$(newline))) )
+
+extract-frames : $(greyscale-targets) $(filtered-targets)
+
+
+## COLMAP pipeline block (greyscale, filtered, original)
+# assumes: data/colmap-tuning/DJI_0145-FPS-1.00-greyscale
+define recipe-colmap-folder
+	$(poetry-base) run-colmap-pipeline-cli data/frames/$(call ELEM3,$(@),4)/FPS-$(call ELEM3,$(@),6)-$(call ELEM3,$(@),7) $(@)
+endef
+
+# GREYSCALE
+colmap-greyscale-targets := $(foreach video,$(video-roots),$(foreach fps,$(fps-roots),data/colmap-tuning/$(video)-FPS-$(fps)-greyscale))
+
+$(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(eval data/colmap-tuning/$(video)-FPS-$(fps)-greyscale : data/frames/$(video)/FPS-$(fps)-greyscale ; $$(recipe-colmap-folder)$(newline))))
+
+colmap-pipeline-greyscale : $(colmap-greyscale-targets)
+
+# FILTERED
+colmap-filtered-targets := $(foreach video,$(video-roots),$(foreach fps,$(fps-roots),data/colmap-tuning/$(video)-FPS-$(fps)-filtered))
+
+$(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(eval data/colmap-tuning/$(video)-FPS-$(fps)-filtered : data/frames/$(video)/FPS-$(fps)-filtered ; $$(recipe-colmap-folder)$(newline))))
+
+colmap-pipeline-filtered : $(colmap-filtered-targets)
+
+# ORIGINAL
+colmap-original-targets := $(foreach video,$(video-roots),$(foreach fps,$(fps-roots),data/colmap-tuning/$(video)-FPS-$(fps)-original))
+
+$(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(eval data/colmap-tuning/$(video)-FPS-$(fps)-original : data/frames/$(video)/FPS-$(fps)-original ; $$(recipe-colmap-folder)$(newline))))
+
+colmap-pipeline-original : $(colmap-original-targets)
+
 
 openmvg-openmvs-pipeline:
 	poetry run python scripts/cli.py run-openmvg-openmvs \
@@ -56,29 +127,20 @@ init-nvidia-configuration:
 	sudo mkdir -p /etc/nvidia-container-runtime
 	sudo touch /etc/nvidia-container-runtime/config.toml
 
-# Generate pair graph and plot as graph.png
-# Generate pair graph and plot as graph.png using openmvg service
-graph-check:
-	@echo "👉 Running [openMVG_main_PairGenerator] ..."
-	docker compose -f ./docker/docker-compose.yml run --rm --user 1000:1000 openmvg \
-		openMVG_main_PairGenerator \
-		-i /workspace/sfm_data.json \
-		-m /workspace/matches \
-		-o /workspace/matches/matches.f.txt
+## Interactive shell targets for debugging
 
-	@echo "👉 Converting matches.g.txt → matches.dot ..."
-	python scripts/cli.py convert-matches-g \
-		--input ./data/openmvg/matches/matches.f.txt \
-		--output ./data/openmvg/matches/matches.dot
+colmap-shell:
+	docker compose -f ./docker/docker-compose.yml run --rm colmap bash
 
-	@echo "👉 Creating graph PNG with neato ..."
-	neato -Tpng ./data/openmvg/matches/matches.dot \
-		-o ./data/openmvg/matches/matches.png
+openmvg-shell:
+	docker compose -f ./docker/docker-compose.yml run --rm openmvg bash
+
+openmvs-shell:
+	docker compose -f ./docker/docker-compose.yml run --rm openmvs bash
 
 
-	python scripts/cli.py analyze-graph ./data/openmvg/matches/matches.f.txt --show-disconnected
+build-colmap:
+	docker compose -f ./docker/docker-compose.yml build colmap
 
-	python scripts/cli.py analyze-graph ./data/openmvg/matches/matches.e.txt --show-disconnected
-
-
-	@echo "✅ Graph visualization complete: ./data/openmvg/matches/matches.png"
+build-colmap-cuda:
+	docker compose -f ./docker/docker-compose.yml build colmap-cuda

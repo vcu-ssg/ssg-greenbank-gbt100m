@@ -1,11 +1,26 @@
 services:
 
   colmap:
-    image: colmap/colmap:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.colmap
     runtime: nvidia
     volumes:
       - ../data:/data
     command: bash
+    environment:
+    - QT_QPA_PLATFORM=offscreen
+
+  colmap-cuda:
+    build:
+      context: .
+      dockerfile: Dockerfile.colmap.cuda
+    runtime: nvidia
+    volumes:
+      - ../data:/data
+    command: bash
+    environment:
+    - QT_QPA_PLATFORM=offscreen
 
   openmvg:
     build:
