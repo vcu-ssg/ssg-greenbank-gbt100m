@@ -30,28 +30,23 @@ def run_colmap(frame_dir, colmap_dir, output_format):
     colmap_pipeline.run_pipeline(frame_dir, colmap_dir, output_format)
 
 @cli.command()
-@click.option("--frame-dir", default="data/frames", help="Dir with frames to process")
-@click.option("--openmvg-dir", default="data/openmvg", help="OpenMVG working dir")
-@click.option("--openmvs-dir", default="data/openmvs", help="OpenMVS output dir")
 @click.option('--enable-texturing/--no-enable-texturing', is_flag=True, default=False, help='Enable/disable OpenMVS TextureMesh step.')
 @click.option('--sfm-engine', type=click.Choice(['GLOBAL', 'INCREMENTAL'], case_sensitive=False), default='GLOBAL', help='SfM engine to use.')
 @click.option('--matches-ratio', type=float, default=0.6, show_default=True, help='Feature matching ratio filter (lower = more matches).')
-def run_openmvg_openmvs(frame_dir, openmvg_dir, openmvs_dir,enable_texturing, sfm_engine, matches_ratio):
+def run_openmvg_openmvs(enable_texturing, sfm_engine, matches_ratio):
     """Run OpenMVG + OpenMVS pipeline"""
     print("==== Pipeline configuration ====")
     print(f" SfM engine      : {sfm_engine}")
     print(f" Matches ratio   : {matches_ratio}")
     print(f" Texturing       : {'ENABLED' if enable_texturing else 'DISABLED'}")
     print("================================\n")    
+
+    # Call run_pipeline with correct args:
     openmvg_pipeline.run_pipeline(
-        frame_dir=frame_dir,
-        openmvg_dir=openmvg_dir,
-        openmvs_dir=openmvs_dir,
         enable_texturing=enable_texturing,
         sfm_engine=sfm_engine.upper(),
         matches_ratio=matches_ratio
     )
-    
     
 @cli.command()
 @click.option(
