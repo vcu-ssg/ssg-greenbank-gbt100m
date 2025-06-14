@@ -18,6 +18,7 @@ data/videos/*.MP4
 data/frames/
 data/colmap/
 data/openmvg/
+data/colmap-tuning/
 data/openmvs/
 data/outputs/
 

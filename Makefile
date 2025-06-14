@@ -21,6 +21,7 @@ init-folders:
 	touch data/videos/.gitkeep
 	touch data/frames/.gitkeep
 	touch data/colmap/.gitkeep
+	touch data/colmap-tuning/.gitkeep
 	touch data/openmvg/.gitkeep
 	touch data/openmvs/.gitkeep
 	touch data/outputs/.gitkeep
@@ -100,6 +101,9 @@ $(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(eval data/colmap-tun
 colmap-pipeline-original : $(colmap-original-targets)
 
 
+
+
+
 openmvg-openmvs-pipeline:
 	poetry run python scripts/cli.py run-openmvg-openmvs \
 		--sfm-engine=$(ENGINE) \
@@ -111,6 +115,7 @@ clean-frames:
 
 clean:
 	rm -rf data/colmap/*
+	rm -rf data/colmap-tuning/*
 	rm -rf data/openmvg/*
 	rm -rf data/openmvs/*
 	rm -rf data/outputs/*

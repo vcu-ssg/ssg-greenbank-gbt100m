@@ -1,0 +1,72 @@
+---
+title: "COLMAP Tuning Report"
+format: html
+---
+
+```{python}
+import subprocess
+import os
+import re
+import pandas as pd
+from pathlib import Path
+
+# Base path to colmap-tuning
+base_path = Path("data/colmap-tuning")
+
+# Collect results
+results = []
+
+# Loop over each scenario
+for scenario in sorted(base_path.glob("*/sparse/0")):
+    scenario_name = scenario.parents[1].name
+    scenario_path = scenario.as_posix()
+
+    try:
+        # Run model_analyzer and capture output
+        output = subprocess.check_output([
+            "colmap",
+            "model_analyzer",
+            f"--path={scenario_path}"
+        ], text=True)
+        
+        # Parse output with regex
+        stats = {}
+        stats["Scenario"] = scenario_name
+
+        patterns = {
+            "Cameras": r"Cameras:\s+(\d+)",
+            "Images": r"Images:\s+(\d+)",
+            "Registered Images": r"Registered images:\s+(\d+)",
+            "Points3D": r"Points:\s+(\d+)",
+            "Observations": r"Observations:\s+(\d+)",
+            "Mean Track Length": r"Mean track length:\s+([\d\.]+)",
+            "Mean Observations per Image": r"Mean observations per image:\s+([\d\.]+)",
+            "Mean Reprojection Error": r"Mean reprojection error:\s+([\d\.]+)"
+        }
+
+        for key, pattern in patterns.items():
+            match = re.search(pattern, output)
+            stats[key] = match.group(1) if match else "?"
+
+        results.append(stats)
+    
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Error analyzing {scenario_name}: {e}")
+
+# Build DataFrame
+df = pd.DataFrame(results)
+
+# Format numbers
+df["Mean Reprojection Error"] = pd.to_numeric(df["Mean Reprojection Error"], errors="coerce")
+df["Mean Track Length"] = pd.to_numeric(df["Mean Track Length"], errors="coerce")
+df["Registered Images"] = pd.to_numeric(df["Registered Images"], errors="coerce")
+df["Points3D"] = pd.to_numeric(df["Points3D"], errors="coerce")
+
+# Sort by Scenario (optional)
+df = df.sort_values("Scenario").reset_index(drop=True)
+
+# Display
+df
+
+```
+
