@@ -1,0 +1,40 @@
+FROM pytorch/pytorch:2.0.0-cuda11.7-cudnn8-devel
+
+# Set working directory
+WORKDIR /opt/gaussian-splatting
+
+# Environment setup
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=America/New_York
+ENV TORCH_CUDA_ARCH_LIST="8.6"
+ENV TORCH_NVCC_FLAGS="-Xfatbin=-compress-all"
+
+# Install OS packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        git \
+        ninja-build \
+        libgl1-mesa-dev \
+        libx11-dev \
+        libglib2.0-0 && \
+        rm -rf /var/lib/apt/lists/*
+
+# Clone the repository and submodules
+RUN git clone https://github.com/graphdeco-inria/gaussian-splatting.git . && \
+    git submodule update --init --recursive
+
+# Remove unsupported compute_89 flags from all build-related files
+RUN find submodules/diff-gaussian-rasterization/ -type f -exec sed -i 's/-gencode=arch=compute_89[^ ]*//g' {} +
+
+# Install Python packages and CUDA extensions
+RUN pip install --upgrade pip && \
+    pip install tqdm plyfile joblib opencv-python && \
+    pip install ./submodules/diff-gaussian-rasterization && \
+    pip install ./submodules/simple-knn && \
+    pip install ./submodules/fused-ssim
+
+# Optional: Add user john with UID=1000 and GID=1000
+RUN groupadd -g 1000 john && useradd -m -u 1000 -g 1000 john
+
+# Default command
+CMD ["/bin/bash"]

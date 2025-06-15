@@ -1,6 +1,6 @@
 import click
 from scripts.extract_frames import extract_frames_from_file, extract_frames_from_folder, process_folder_with_convert, process_folder_with_convert_workers
-from scripts import colmap_pipeline, openmvg_pipeline, convert_matches_g_to_dot
+from scripts import colmap_pipeline, openmvg_pipeline, convert_matches_g_to_dot, gsplat_pipeline
 
 @click.group()
 def cli():
@@ -114,6 +114,15 @@ def run_colmap_pipeline_cli(image_path, colmap_output_folder):
     from scripts.colmap_pipeline import run_colmap_pipeline
     run_colmap_pipeline(image_path, colmap_output_folder)
 
+
+@cli.command()
+@click.option('--scene', required=True, help='Scene name, e.g. DJI_0145-FPS-1.60-original')
+@click.option('--frames-dir', required=True, type=click.Path(), help='Path to input images')
+@click.option('--sparse-dir', required=True, type=click.Path(), help='Path to sparse COLMAP model (sparse/0)')
+@click.option('--output-dir', required=True, type=click.Path(), help='Output directory for gsplat results')
+def gsplat(scene, frames_dir, sparse_dir, output_dir):
+    """Run Gaussian Splatting training for a specific scene with provided paths."""
+    gsplat_pipeline.run_gsplat_training(scene, frames_dir, sparse_dir, output_dir)
 
 
 if __name__ == "__main__":

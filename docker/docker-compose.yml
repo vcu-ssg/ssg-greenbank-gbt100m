@@ -1,5 +1,18 @@
 services:
 
+  gsplat:
+    build:
+      context: .
+      dockerfile: Dockerfile.gsplat
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ../data:/data
+    working_dir: /opt/gaussian-splatting
+    command: bash
+
+
   colmap:
     build:
       context: .

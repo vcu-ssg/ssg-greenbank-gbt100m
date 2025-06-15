@@ -1,0 +1,1 @@
+Namespace(sh_degree=3, source_path='/data/colmap-tuning/DJI_0145-FPS-1.60-original/sparse/0', model_path='/data/gsplat/DJI_0145-FPS-1.60-original', images='/data/frames/DJI_0145/FPS-1.60-original', depths='', resolution=-1, white_background=False, train_test_exp=False, data_device='cuda', eval=False)

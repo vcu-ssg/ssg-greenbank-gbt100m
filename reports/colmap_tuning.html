@@ -1,0 +1,2269 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.7.29">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>COLMAP Tuning Report</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="colmap_tuning_files/libs/clipboard/clipboard.min.js"></script>
+<script src="colmap_tuning_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="colmap_tuning_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="colmap_tuning_files/libs/quarto-html/popper.min.js"></script>
+<script src="colmap_tuning_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="colmap_tuning_files/libs/quarto-html/anchor.min.js"></script>
+<link href="colmap_tuning_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="colmap_tuning_files/libs/quarto-html/quarto-syntax-highlighting-0815c480559380816a4d1ea211a47e91.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="colmap_tuning_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="colmap_tuning_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="colmap_tuning_files/libs/bootstrap/bootstrap-fda715a99dab2cee6b571544b6dc36e4.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">COLMAP Tuning Report</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div id="d9f2a80d" class="cell" data-execution_count="1">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> subprocess</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> re</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> pathlib <span class="im">import</span> Path</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Base path to colmap-tuning</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>base_path <span class="op">=</span> Path(<span class="st">"../data/colmap-tuning"</span>)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Collect results</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>results <span class="op">=</span> []</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Loop over each scenario</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> scenario <span class="kw">in</span> <span class="bu">sorted</span>(base_path.glob(<span class="st">"*/sparse/0"</span>)):</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>    scenario_name <span class="op">=</span> scenario.parents[<span class="dv">1</span>].name</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>    scenario_path <span class="op">=</span> scenario.as_posix()</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">try</span>:</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Run model_analyzer and capture output</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>        output <span class="op">=</span> subprocess.check_output([</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>            <span class="st">"colmap"</span>,</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>            <span class="st">"model_analyzer"</span>,</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>            <span class="ss">f"--path=</span><span class="sc">{</span>scenario_path<span class="sc">}</span><span class="ss">"</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>        ], text<span class="op">=</span><span class="va">True</span>,stderr<span class="op">=</span>subprocess.STDOUT)</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Parse output with regex</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>        stats <span class="op">=</span> {}</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>        stats[<span class="st">"Scenario"</span>] <span class="op">=</span> scenario_name</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>        patterns <span class="op">=</span> {</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Cameras"</span>: <span class="vs">r"</span><span class="ch">\]</span><span class="dv">\s</span><span class="op">+</span><span class="vs">Cameras:</span><span class="dv">\s</span><span class="op">+</span><span class="kw">(</span><span class="dv">\d</span><span class="op">+</span><span class="kw">)</span><span class="vs">"</span>,</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Images"</span>: <span class="vs">r"</span><span class="ch">\]</span><span class="dv">\s</span><span class="op">+</span><span class="vs">Images:</span><span class="dv">\s</span><span class="op">+</span><span class="kw">(</span><span class="dv">\d</span><span class="op">+</span><span class="kw">)</span><span class="vs">"</span>,</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Registered Images"</span>: <span class="vs">r"</span><span class="ch">\]</span><span class="dv">\s</span><span class="op">+</span><span class="vs">Registered images:</span><span class="dv">\s</span><span class="op">+</span><span class="kw">(</span><span class="dv">\d</span><span class="op">+</span><span class="kw">)</span><span class="vs">"</span>,</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Points3D"</span>: <span class="vs">r"</span><span class="ch">\]</span><span class="dv">\s</span><span class="op">+</span><span class="vs">Points:</span><span class="dv">\s</span><span class="op">+</span><span class="kw">(</span><span class="dv">\d</span><span class="op">+</span><span class="kw">)</span><span class="vs">"</span>,</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Observations"</span>: <span class="vs">r"</span><span class="ch">\]</span><span class="dv">\s</span><span class="op">+</span><span class="vs">Observations:</span><span class="dv">\s</span><span class="op">+</span><span class="kw">(</span><span class="dv">\d</span><span class="op">+</span><span class="kw">)</span><span class="vs">"</span>,</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Mean Track Length"</span>: <span class="vs">r"</span><span class="ch">\]</span><span class="dv">\s</span><span class="op">+</span><span class="vs">Mean track length:</span><span class="dv">\s</span><span class="op">+</span><span class="kw">(</span><span class="pp">[</span><span class="dv">\d</span><span class="ch">\.</span><span class="pp">]</span><span class="op">+</span><span class="kw">)</span><span class="vs">"</span>,</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Mean Observations per Image"</span>: <span class="vs">r"</span><span class="ch">\]</span><span class="dv">\s</span><span class="op">+</span><span class="vs">Mean observations per image:</span><span class="dv">\s</span><span class="op">+</span><span class="kw">(</span><span class="pp">[</span><span class="dv">\d</span><span class="ch">\.</span><span class="pp">]</span><span class="op">+</span><span class="kw">)</span><span class="vs">"</span>,</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>            <span class="st">"Mean Reprojection Error"</span>: <span class="vs">r"</span><span class="ch">\]</span><span class="dv">\s</span><span class="op">+</span><span class="vs">Mean reprojection error:</span><span class="dv">\s</span><span class="op">+</span><span class="kw">(</span><span class="pp">[</span><span class="dv">\d</span><span class="ch">\.</span><span class="pp">]</span><span class="op">+</span><span class="kw">)</span><span class="vs">"</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> key, pattern <span class="kw">in</span> patterns.items():</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>            stats[key] <span class="op">=</span> <span class="st">"?"</span>  <span class="co"># default if not matched</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>            <span class="cf">for</span> line <span class="kw">in</span> output.splitlines():</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>                <span class="bu">print</span>(<span class="ss">f"</span><span class="ch">\t</span><span class="sc">{</span>line<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>                match <span class="op">=</span> re.search(pattern, line)</span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> match:</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>                    stats[key] <span class="op">=</span> match.group(<span class="dv">1</span>)</span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>                    <span class="cf">break</span>  <span class="co"># move to next pattern</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>        results.append(stats)</span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>    <span class="cf">except</span> subprocess.CalledProcessError <span class="im">as</span> e:</span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>        <span class="bu">print</span>(<span class="ss">f"❌ Error analyzing </span><span class="sc">{</span>scenario_name<span class="sc">}</span><span class="ss">: </span><span class="sc">{</span>e<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co"># Build DataFrame</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.DataFrame(results)</span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="co"># Format numbers</span></span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>df[<span class="st">"Mean Reprojection Error"</span>] <span class="op">=</span> pd.to_numeric(df[<span class="st">"Mean Reprojection Error"</span>], errors<span class="op">=</span><span class="st">"coerce"</span>)</span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>df[<span class="st">"Mean Track Length"</span>] <span class="op">=</span> pd.to_numeric(df[<span class="st">"Mean Track Length"</span>], errors<span class="op">=</span><span class="st">"coerce"</span>)</span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>df[<span class="st">"Registered Images"</span>] <span class="op">=</span> pd.to_numeric(df[<span class="st">"Registered Images"</span>], errors<span class="op">=</span><span class="st">"coerce"</span>)</span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>df[<span class="st">"Points3D"</span>] <span class="op">=</span> pd.to_numeric(df[<span class="st">"Points3D"</span>], errors<span class="op">=</span><span class="st">"coerce"</span>)</span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="co"># Sort by Scenario (optional)</span></span>
+<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> df.sort_values(<span class="st">"Scenario"</span>).reset_index(drop<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a><span class="co"># Display</span></span>
+<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a>df</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    I20250614 07:42:10.813589 20836 model.cc:429] Cameras: 1
+    I20250614 07:42:10.813589 20836 model.cc:429] Cameras: 1
+    I20250614 07:42:10.813680 20836 model.cc:430] Images: 183
+    I20250614 07:42:10.813589 20836 model.cc:429] Cameras: 1
+    I20250614 07:42:10.813680 20836 model.cc:430] Images: 183
+    I20250614 07:42:10.813685 20836 model.cc:431] Registered images: 183
+    I20250614 07:42:10.813589 20836 model.cc:429] Cameras: 1
+    I20250614 07:42:10.813680 20836 model.cc:430] Images: 183
+    I20250614 07:42:10.813685 20836 model.cc:431] Registered images: 183
+    I20250614 07:42:10.813688 20836 model.cc:433] Points: 68778
+    I20250614 07:42:10.813589 20836 model.cc:429] Cameras: 1
+    I20250614 07:42:10.813680 20836 model.cc:430] Images: 183
+    I20250614 07:42:10.813685 20836 model.cc:431] Registered images: 183
+    I20250614 07:42:10.813688 20836 model.cc:433] Points: 68778
+    I20250614 07:42:10.813690 20836 model.cc:434] Observations: 417797
+    I20250614 07:42:10.813589 20836 model.cc:429] Cameras: 1
+    I20250614 07:42:10.813680 20836 model.cc:430] Images: 183
+    I20250614 07:42:10.813685 20836 model.cc:431] Registered images: 183
+    I20250614 07:42:10.813688 20836 model.cc:433] Points: 68778
+    I20250614 07:42:10.813690 20836 model.cc:434] Observations: 417797
+    I20250614 07:42:10.813697 20836 model.cc:436] Mean track length: 6.074573
+    I20250614 07:42:10.813589 20836 model.cc:429] Cameras: 1
+    I20250614 07:42:10.813680 20836 model.cc:430] Images: 183
+    I20250614 07:42:10.813685 20836 model.cc:431] Registered images: 183
+    I20250614 07:42:10.813688 20836 model.cc:433] Points: 68778
+    I20250614 07:42:10.813690 20836 model.cc:434] Observations: 417797
+    I20250614 07:42:10.813697 20836 model.cc:436] Mean track length: 6.074573
+    I20250614 07:42:10.813704 20836 model.cc:438] Mean observations per image: 2283.043716
+    I20250614 07:42:10.813589 20836 model.cc:429] Cameras: 1
+    I20250614 07:42:10.813680 20836 model.cc:430] Images: 183
+    I20250614 07:42:10.813685 20836 model.cc:431] Registered images: 183
+    I20250614 07:42:10.813688 20836 model.cc:433] Points: 68778
+    I20250614 07:42:10.813690 20836 model.cc:434] Observations: 417797
+    I20250614 07:42:10.813697 20836 model.cc:436] Mean track length: 6.074573
+    I20250614 07:42:10.813704 20836 model.cc:438] Mean observations per image: 2283.043716
+    I20250614 07:42:10.813707 20836 model.cc:441] Mean reprojection error: 0.707498px
+    I20250614 07:42:10.970074 20837 model.cc:429] Cameras: 1
+    I20250614 07:42:10.970074 20837 model.cc:429] Cameras: 1
+    I20250614 07:42:10.970158 20837 model.cc:430] Images: 183
+    I20250614 07:42:10.970074 20837 model.cc:429] Cameras: 1
+    I20250614 07:42:10.970158 20837 model.cc:430] Images: 183
+    I20250614 07:42:10.970163 20837 model.cc:431] Registered images: 183
+    I20250614 07:42:10.970074 20837 model.cc:429] Cameras: 1
+    I20250614 07:42:10.970158 20837 model.cc:430] Images: 183
+    I20250614 07:42:10.970163 20837 model.cc:431] Registered images: 183
+    I20250614 07:42:10.970165 20837 model.cc:433] Points: 83212
+    I20250614 07:42:10.970074 20837 model.cc:429] Cameras: 1
+    I20250614 07:42:10.970158 20837 model.cc:430] Images: 183
+    I20250614 07:42:10.970163 20837 model.cc:431] Registered images: 183
+    I20250614 07:42:10.970165 20837 model.cc:433] Points: 83212
+    I20250614 07:42:10.970168 20837 model.cc:434] Observations: 534165
+    I20250614 07:42:10.970074 20837 model.cc:429] Cameras: 1
+    I20250614 07:42:10.970158 20837 model.cc:430] Images: 183
+    I20250614 07:42:10.970163 20837 model.cc:431] Registered images: 183
+    I20250614 07:42:10.970165 20837 model.cc:433] Points: 83212
+    I20250614 07:42:10.970168 20837 model.cc:434] Observations: 534165
+    I20250614 07:42:10.970175 20837 model.cc:436] Mean track length: 6.419327
+    I20250614 07:42:10.970074 20837 model.cc:429] Cameras: 1
+    I20250614 07:42:10.970158 20837 model.cc:430] Images: 183
+    I20250614 07:42:10.970163 20837 model.cc:431] Registered images: 183
+    I20250614 07:42:10.970165 20837 model.cc:433] Points: 83212
+    I20250614 07:42:10.970168 20837 model.cc:434] Observations: 534165
+    I20250614 07:42:10.970175 20837 model.cc:436] Mean track length: 6.419327
+    I20250614 07:42:10.970192 20837 model.cc:438] Mean observations per image: 2918.934426
+    I20250614 07:42:10.970074 20837 model.cc:429] Cameras: 1
+    I20250614 07:42:10.970158 20837 model.cc:430] Images: 183
+    I20250614 07:42:10.970163 20837 model.cc:431] Registered images: 183
+    I20250614 07:42:10.970165 20837 model.cc:433] Points: 83212
+    I20250614 07:42:10.970168 20837 model.cc:434] Observations: 534165
+    I20250614 07:42:10.970175 20837 model.cc:436] Mean track length: 6.419327
+    I20250614 07:42:10.970192 20837 model.cc:438] Mean observations per image: 2918.934426
+    I20250614 07:42:10.970207 20837 model.cc:441] Mean reprojection error: 0.680858px
+    I20250614 07:42:11.138734 20838 model.cc:429] Cameras: 1
+    I20250614 07:42:11.138734 20838 model.cc:429] Cameras: 1
+    I20250614 07:42:11.138816 20838 model.cc:430] Images: 214
+    I20250614 07:42:11.138734 20838 model.cc:429] Cameras: 1
+    I20250614 07:42:11.138816 20838 model.cc:430] Images: 214
+    I20250614 07:42:11.138821 20838 model.cc:431] Registered images: 214
+    I20250614 07:42:11.138734 20838 model.cc:429] Cameras: 1
+    I20250614 07:42:11.138816 20838 model.cc:430] Images: 214
+    I20250614 07:42:11.138821 20838 model.cc:431] Registered images: 214
+    I20250614 07:42:11.138824 20838 model.cc:433] Points: 82934
+    I20250614 07:42:11.138734 20838 model.cc:429] Cameras: 1
+    I20250614 07:42:11.138816 20838 model.cc:430] Images: 214
+    I20250614 07:42:11.138821 20838 model.cc:431] Registered images: 214
+    I20250614 07:42:11.138824 20838 model.cc:433] Points: 82934
+    I20250614 07:42:11.138828 20838 model.cc:434] Observations: 532169
+    I20250614 07:42:11.138734 20838 model.cc:429] Cameras: 1
+    I20250614 07:42:11.138816 20838 model.cc:430] Images: 214
+    I20250614 07:42:11.138821 20838 model.cc:431] Registered images: 214
+    I20250614 07:42:11.138824 20838 model.cc:433] Points: 82934
+    I20250614 07:42:11.138828 20838 model.cc:434] Observations: 532169
+    I20250614 07:42:11.138834 20838 model.cc:436] Mean track length: 6.416777
+    I20250614 07:42:11.138734 20838 model.cc:429] Cameras: 1
+    I20250614 07:42:11.138816 20838 model.cc:430] Images: 214
+    I20250614 07:42:11.138821 20838 model.cc:431] Registered images: 214
+    I20250614 07:42:11.138824 20838 model.cc:433] Points: 82934
+    I20250614 07:42:11.138828 20838 model.cc:434] Observations: 532169
+    I20250614 07:42:11.138834 20838 model.cc:436] Mean track length: 6.416777
+    I20250614 07:42:11.138849 20838 model.cc:438] Mean observations per image: 2486.771028
+    I20250614 07:42:11.138734 20838 model.cc:429] Cameras: 1
+    I20250614 07:42:11.138816 20838 model.cc:430] Images: 214
+    I20250614 07:42:11.138821 20838 model.cc:431] Registered images: 214
+    I20250614 07:42:11.138824 20838 model.cc:433] Points: 82934
+    I20250614 07:42:11.138828 20838 model.cc:434] Observations: 532169
+    I20250614 07:42:11.138834 20838 model.cc:436] Mean track length: 6.416777
+    I20250614 07:42:11.138849 20838 model.cc:438] Mean observations per image: 2486.771028
+    I20250614 07:42:11.138854 20838 model.cc:441] Mean reprojection error: 0.716086px
+    I20250614 07:42:11.333022 20839 model.cc:429] Cameras: 1
+    I20250614 07:42:11.333022 20839 model.cc:429] Cameras: 1
+    I20250614 07:42:11.333110 20839 model.cc:430] Images: 214
+    I20250614 07:42:11.333022 20839 model.cc:429] Cameras: 1
+    I20250614 07:42:11.333110 20839 model.cc:430] Images: 214
+    I20250614 07:42:11.333114 20839 model.cc:431] Registered images: 214
+    I20250614 07:42:11.333022 20839 model.cc:429] Cameras: 1
+    I20250614 07:42:11.333110 20839 model.cc:430] Images: 214
+    I20250614 07:42:11.333114 20839 model.cc:431] Registered images: 214
+    I20250614 07:42:11.333118 20839 model.cc:433] Points: 99325
+    I20250614 07:42:11.333022 20839 model.cc:429] Cameras: 1
+    I20250614 07:42:11.333110 20839 model.cc:430] Images: 214
+    I20250614 07:42:11.333114 20839 model.cc:431] Registered images: 214
+    I20250614 07:42:11.333118 20839 model.cc:433] Points: 99325
+    I20250614 07:42:11.333120 20839 model.cc:434] Observations: 676258
+    I20250614 07:42:11.333022 20839 model.cc:429] Cameras: 1
+    I20250614 07:42:11.333110 20839 model.cc:430] Images: 214
+    I20250614 07:42:11.333114 20839 model.cc:431] Registered images: 214
+    I20250614 07:42:11.333118 20839 model.cc:433] Points: 99325
+    I20250614 07:42:11.333120 20839 model.cc:434] Observations: 676258
+    I20250614 07:42:11.333129 20839 model.cc:436] Mean track length: 6.808538
+    I20250614 07:42:11.333022 20839 model.cc:429] Cameras: 1
+    I20250614 07:42:11.333110 20839 model.cc:430] Images: 214
+    I20250614 07:42:11.333114 20839 model.cc:431] Registered images: 214
+    I20250614 07:42:11.333118 20839 model.cc:433] Points: 99325
+    I20250614 07:42:11.333120 20839 model.cc:434] Observations: 676258
+    I20250614 07:42:11.333129 20839 model.cc:436] Mean track length: 6.808538
+    I20250614 07:42:11.333133 20839 model.cc:438] Mean observations per image: 3160.084112
+    I20250614 07:42:11.333022 20839 model.cc:429] Cameras: 1
+    I20250614 07:42:11.333110 20839 model.cc:430] Images: 214
+    I20250614 07:42:11.333114 20839 model.cc:431] Registered images: 214
+    I20250614 07:42:11.333118 20839 model.cc:433] Points: 99325
+    I20250614 07:42:11.333120 20839 model.cc:434] Observations: 676258
+    I20250614 07:42:11.333129 20839 model.cc:436] Mean track length: 6.808538
+    I20250614 07:42:11.333133 20839 model.cc:438] Mean observations per image: 3160.084112
+    I20250614 07:42:11.333137 20839 model.cc:441] Mean reprojection error: 0.690331px
+    I20250614 07:42:11.533301 20840 model.cc:429] Cameras: 1
+    I20250614 07:42:11.533301 20840 model.cc:429] Cameras: 1
+    I20250614 07:42:11.533386 20840 model.cc:430] Images: 244
+    I20250614 07:42:11.533301 20840 model.cc:429] Cameras: 1
+    I20250614 07:42:11.533386 20840 model.cc:430] Images: 244
+    I20250614 07:42:11.533391 20840 model.cc:431] Registered images: 244
+    I20250614 07:42:11.533301 20840 model.cc:429] Cameras: 1
+    I20250614 07:42:11.533386 20840 model.cc:430] Images: 244
+    I20250614 07:42:11.533391 20840 model.cc:431] Registered images: 244
+    I20250614 07:42:11.533394 20840 model.cc:433] Points: 95786
+    I20250614 07:42:11.533301 20840 model.cc:429] Cameras: 1
+    I20250614 07:42:11.533386 20840 model.cc:430] Images: 244
+    I20250614 07:42:11.533391 20840 model.cc:431] Registered images: 244
+    I20250614 07:42:11.533394 20840 model.cc:433] Points: 95786
+    I20250614 07:42:11.533396 20840 model.cc:434] Observations: 644085
+    I20250614 07:42:11.533301 20840 model.cc:429] Cameras: 1
+    I20250614 07:42:11.533386 20840 model.cc:430] Images: 244
+    I20250614 07:42:11.533391 20840 model.cc:431] Registered images: 244
+    I20250614 07:42:11.533394 20840 model.cc:433] Points: 95786
+    I20250614 07:42:11.533396 20840 model.cc:434] Observations: 644085
+    I20250614 07:42:11.533404 20840 model.cc:436] Mean track length: 6.724208
+    I20250614 07:42:11.533301 20840 model.cc:429] Cameras: 1
+    I20250614 07:42:11.533386 20840 model.cc:430] Images: 244
+    I20250614 07:42:11.533391 20840 model.cc:431] Registered images: 244
+    I20250614 07:42:11.533394 20840 model.cc:433] Points: 95786
+    I20250614 07:42:11.533396 20840 model.cc:434] Observations: 644085
+    I20250614 07:42:11.533404 20840 model.cc:436] Mean track length: 6.724208
+    I20250614 07:42:11.533409 20840 model.cc:438] Mean observations per image: 2639.692623
+    I20250614 07:42:11.533301 20840 model.cc:429] Cameras: 1
+    I20250614 07:42:11.533386 20840 model.cc:430] Images: 244
+    I20250614 07:42:11.533391 20840 model.cc:431] Registered images: 244
+    I20250614 07:42:11.533394 20840 model.cc:433] Points: 95786
+    I20250614 07:42:11.533396 20840 model.cc:434] Observations: 644085
+    I20250614 07:42:11.533404 20840 model.cc:436] Mean track length: 6.724208
+    I20250614 07:42:11.533409 20840 model.cc:438] Mean observations per image: 2639.692623
+    I20250614 07:42:11.533414 20840 model.cc:441] Mean reprojection error: 0.722341px
+    I20250614 07:42:11.718186 20841 model.cc:429] Cameras: 1
+    I20250614 07:42:11.718186 20841 model.cc:429] Cameras: 1
+    I20250614 07:42:11.718281 20841 model.cc:430] Images: 244
+    I20250614 07:42:11.718186 20841 model.cc:429] Cameras: 1
+    I20250614 07:42:11.718281 20841 model.cc:430] Images: 244
+    I20250614 07:42:11.718286 20841 model.cc:431] Registered images: 244
+    I20250614 07:42:11.718186 20841 model.cc:429] Cameras: 1
+    I20250614 07:42:11.718281 20841 model.cc:430] Images: 244
+    I20250614 07:42:11.718286 20841 model.cc:431] Registered images: 244
+    I20250614 07:42:11.718289 20841 model.cc:433] Points: 96103
+    I20250614 07:42:11.718186 20841 model.cc:429] Cameras: 1
+    I20250614 07:42:11.718281 20841 model.cc:430] Images: 244
+    I20250614 07:42:11.718286 20841 model.cc:431] Registered images: 244
+    I20250614 07:42:11.718289 20841 model.cc:433] Points: 96103
+    I20250614 07:42:11.718291 20841 model.cc:434] Observations: 647131
+    I20250614 07:42:11.718186 20841 model.cc:429] Cameras: 1
+    I20250614 07:42:11.718281 20841 model.cc:430] Images: 244
+    I20250614 07:42:11.718286 20841 model.cc:431] Registered images: 244
+    I20250614 07:42:11.718289 20841 model.cc:433] Points: 96103
+    I20250614 07:42:11.718291 20841 model.cc:434] Observations: 647131
+    I20250614 07:42:11.718299 20841 model.cc:436] Mean track length: 6.733723
+    I20250614 07:42:11.718186 20841 model.cc:429] Cameras: 1
+    I20250614 07:42:11.718281 20841 model.cc:430] Images: 244
+    I20250614 07:42:11.718286 20841 model.cc:431] Registered images: 244
+    I20250614 07:42:11.718289 20841 model.cc:433] Points: 96103
+    I20250614 07:42:11.718291 20841 model.cc:434] Observations: 647131
+    I20250614 07:42:11.718299 20841 model.cc:436] Mean track length: 6.733723
+    I20250614 07:42:11.718304 20841 model.cc:438] Mean observations per image: 2652.176230
+    I20250614 07:42:11.718186 20841 model.cc:429] Cameras: 1
+    I20250614 07:42:11.718281 20841 model.cc:430] Images: 244
+    I20250614 07:42:11.718286 20841 model.cc:431] Registered images: 244
+    I20250614 07:42:11.718289 20841 model.cc:433] Points: 96103
+    I20250614 07:42:11.718291 20841 model.cc:434] Observations: 647131
+    I20250614 07:42:11.718299 20841 model.cc:436] Mean track length: 6.733723
+    I20250614 07:42:11.718304 20841 model.cc:438] Mean observations per image: 2652.176230
+    I20250614 07:42:11.718308 20841 model.cc:441] Mean reprojection error: 0.722750px
+    I20250614 07:42:11.931608 20844 model.cc:429] Cameras: 1
+    I20250614 07:42:11.931608 20844 model.cc:429] Cameras: 1
+    I20250614 07:42:11.931696 20844 model.cc:430] Images: 244
+    I20250614 07:42:11.931608 20844 model.cc:429] Cameras: 1
+    I20250614 07:42:11.931696 20844 model.cc:430] Images: 244
+    I20250614 07:42:11.931701 20844 model.cc:431] Registered images: 244
+    I20250614 07:42:11.931608 20844 model.cc:429] Cameras: 1
+    I20250614 07:42:11.931696 20844 model.cc:430] Images: 244
+    I20250614 07:42:11.931701 20844 model.cc:431] Registered images: 244
+    I20250614 07:42:11.931704 20844 model.cc:433] Points: 113935
+    I20250614 07:42:11.931608 20844 model.cc:429] Cameras: 1
+    I20250614 07:42:11.931696 20844 model.cc:430] Images: 244
+    I20250614 07:42:11.931701 20844 model.cc:431] Registered images: 244
+    I20250614 07:42:11.931704 20844 model.cc:433] Points: 113935
+    I20250614 07:42:11.931706 20844 model.cc:434] Observations: 818285
+    I20250614 07:42:11.931608 20844 model.cc:429] Cameras: 1
+    I20250614 07:42:11.931696 20844 model.cc:430] Images: 244
+    I20250614 07:42:11.931701 20844 model.cc:431] Registered images: 244
+    I20250614 07:42:11.931704 20844 model.cc:433] Points: 113935
+    I20250614 07:42:11.931706 20844 model.cc:434] Observations: 818285
+    I20250614 07:42:11.931716 20844 model.cc:436] Mean track length: 7.182034
+    I20250614 07:42:11.931608 20844 model.cc:429] Cameras: 1
+    I20250614 07:42:11.931696 20844 model.cc:430] Images: 244
+    I20250614 07:42:11.931701 20844 model.cc:431] Registered images: 244
+    I20250614 07:42:11.931704 20844 model.cc:433] Points: 113935
+    I20250614 07:42:11.931706 20844 model.cc:434] Observations: 818285
+    I20250614 07:42:11.931716 20844 model.cc:436] Mean track length: 7.182034
+    I20250614 07:42:11.931722 20844 model.cc:438] Mean observations per image: 3353.627049
+    I20250614 07:42:11.931608 20844 model.cc:429] Cameras: 1
+    I20250614 07:42:11.931696 20844 model.cc:430] Images: 244
+    I20250614 07:42:11.931701 20844 model.cc:431] Registered images: 244
+    I20250614 07:42:11.931704 20844 model.cc:433] Points: 113935
+    I20250614 07:42:11.931706 20844 model.cc:434] Observations: 818285
+    I20250614 07:42:11.931716 20844 model.cc:436] Mean track length: 7.182034
+    I20250614 07:42:11.931722 20844 model.cc:438] Mean observations per image: 3353.627049
+    I20250614 07:42:11.931726 20844 model.cc:441] Mean reprojection error: 0.696857px
+    I20250614 07:42:12.169642 20845 model.cc:429] Cameras: 1
+    I20250614 07:42:12.169642 20845 model.cc:429] Cameras: 1
+    I20250614 07:42:12.169734 20845 model.cc:430] Images: 275
+    I20250614 07:42:12.169642 20845 model.cc:429] Cameras: 1
+    I20250614 07:42:12.169734 20845 model.cc:430] Images: 275
+    I20250614 07:42:12.169739 20845 model.cc:431] Registered images: 275
+    I20250614 07:42:12.169642 20845 model.cc:429] Cameras: 1
+    I20250614 07:42:12.169734 20845 model.cc:430] Images: 275
+    I20250614 07:42:12.169739 20845 model.cc:431] Registered images: 275
+    I20250614 07:42:12.169741 20845 model.cc:433] Points: 109113
+    I20250614 07:42:12.169642 20845 model.cc:429] Cameras: 1
+    I20250614 07:42:12.169734 20845 model.cc:430] Images: 275
+    I20250614 07:42:12.169739 20845 model.cc:431] Registered images: 275
+    I20250614 07:42:12.169741 20845 model.cc:433] Points: 109113
+    I20250614 07:42:12.169744 20845 model.cc:434] Observations: 770094
+    I20250614 07:42:12.169642 20845 model.cc:429] Cameras: 1
+    I20250614 07:42:12.169734 20845 model.cc:430] Images: 275
+    I20250614 07:42:12.169739 20845 model.cc:431] Registered images: 275
+    I20250614 07:42:12.169741 20845 model.cc:433] Points: 109113
+    I20250614 07:42:12.169744 20845 model.cc:434] Observations: 770094
+    I20250614 07:42:12.169755 20845 model.cc:436] Mean track length: 7.057766
+    I20250614 07:42:12.169642 20845 model.cc:429] Cameras: 1
+    I20250614 07:42:12.169734 20845 model.cc:430] Images: 275
+    I20250614 07:42:12.169739 20845 model.cc:431] Registered images: 275
+    I20250614 07:42:12.169741 20845 model.cc:433] Points: 109113
+    I20250614 07:42:12.169744 20845 model.cc:434] Observations: 770094
+    I20250614 07:42:12.169755 20845 model.cc:436] Mean track length: 7.057766
+    I20250614 07:42:12.169760 20845 model.cc:438] Mean observations per image: 2800.341818
+    I20250614 07:42:12.169642 20845 model.cc:429] Cameras: 1
+    I20250614 07:42:12.169734 20845 model.cc:430] Images: 275
+    I20250614 07:42:12.169739 20845 model.cc:431] Registered images: 275
+    I20250614 07:42:12.169741 20845 model.cc:433] Points: 109113
+    I20250614 07:42:12.169744 20845 model.cc:434] Observations: 770094
+    I20250614 07:42:12.169755 20845 model.cc:436] Mean track length: 7.057766
+    I20250614 07:42:12.169760 20845 model.cc:438] Mean observations per image: 2800.341818
+    I20250614 07:42:12.169770 20845 model.cc:441] Mean reprojection error: 0.725678px
+    I20250614 07:42:12.403192 20846 model.cc:429] Cameras: 1
+    I20250614 07:42:12.403192 20846 model.cc:429] Cameras: 1
+    I20250614 07:42:12.403276 20846 model.cc:430] Images: 275
+    I20250614 07:42:12.403192 20846 model.cc:429] Cameras: 1
+    I20250614 07:42:12.403276 20846 model.cc:430] Images: 275
+    I20250614 07:42:12.403281 20846 model.cc:431] Registered images: 275
+    I20250614 07:42:12.403192 20846 model.cc:429] Cameras: 1
+    I20250614 07:42:12.403276 20846 model.cc:430] Images: 275
+    I20250614 07:42:12.403281 20846 model.cc:431] Registered images: 275
+    I20250614 07:42:12.403285 20846 model.cc:433] Points: 129391
+    I20250614 07:42:12.403192 20846 model.cc:429] Cameras: 1
+    I20250614 07:42:12.403276 20846 model.cc:430] Images: 275
+    I20250614 07:42:12.403281 20846 model.cc:431] Registered images: 275
+    I20250614 07:42:12.403285 20846 model.cc:433] Points: 129391
+    I20250614 07:42:12.403286 20846 model.cc:434] Observations: 972925
+    I20250614 07:42:12.403192 20846 model.cc:429] Cameras: 1
+    I20250614 07:42:12.403276 20846 model.cc:430] Images: 275
+    I20250614 07:42:12.403281 20846 model.cc:431] Registered images: 275
+    I20250614 07:42:12.403285 20846 model.cc:433] Points: 129391
+    I20250614 07:42:12.403286 20846 model.cc:434] Observations: 972925
+    I20250614 07:42:12.403295 20846 model.cc:436] Mean track length: 7.519263
+    I20250614 07:42:12.403192 20846 model.cc:429] Cameras: 1
+    I20250614 07:42:12.403276 20846 model.cc:430] Images: 275
+    I20250614 07:42:12.403281 20846 model.cc:431] Registered images: 275
+    I20250614 07:42:12.403285 20846 model.cc:433] Points: 129391
+    I20250614 07:42:12.403286 20846 model.cc:434] Observations: 972925
+    I20250614 07:42:12.403295 20846 model.cc:436] Mean track length: 7.519263
+    I20250614 07:42:12.403311 20846 model.cc:438] Mean observations per image: 3537.909091
+    I20250614 07:42:12.403192 20846 model.cc:429] Cameras: 1
+    I20250614 07:42:12.403276 20846 model.cc:430] Images: 275
+    I20250614 07:42:12.403281 20846 model.cc:431] Registered images: 275
+    I20250614 07:42:12.403285 20846 model.cc:433] Points: 129391
+    I20250614 07:42:12.403286 20846 model.cc:434] Observations: 972925
+    I20250614 07:42:12.403295 20846 model.cc:436] Mean track length: 7.519263
+    I20250614 07:42:12.403311 20846 model.cc:438] Mean observations per image: 3537.909091
+    I20250614 07:42:12.403318 20846 model.cc:441] Mean reprojection error: 0.700740px
+    I20250614 07:42:12.615370 20847 model.cc:429] Cameras: 1
+    I20250614 07:42:12.615370 20847 model.cc:429] Cameras: 1
+    I20250614 07:42:12.615468 20847 model.cc:430] Images: 218
+    I20250614 07:42:12.615370 20847 model.cc:429] Cameras: 1
+    I20250614 07:42:12.615468 20847 model.cc:430] Images: 218
+    I20250614 07:42:12.615474 20847 model.cc:431] Registered images: 218
+    I20250614 07:42:12.615370 20847 model.cc:429] Cameras: 1
+    I20250614 07:42:12.615468 20847 model.cc:430] Images: 218
+    I20250614 07:42:12.615474 20847 model.cc:431] Registered images: 218
+    I20250614 07:42:12.615476 20847 model.cc:433] Points: 77096
+    I20250614 07:42:12.615370 20847 model.cc:429] Cameras: 1
+    I20250614 07:42:12.615468 20847 model.cc:430] Images: 218
+    I20250614 07:42:12.615474 20847 model.cc:431] Registered images: 218
+    I20250614 07:42:12.615476 20847 model.cc:433] Points: 77096
+    I20250614 07:42:12.615478 20847 model.cc:434] Observations: 777578
+    I20250614 07:42:12.615370 20847 model.cc:429] Cameras: 1
+    I20250614 07:42:12.615468 20847 model.cc:430] Images: 218
+    I20250614 07:42:12.615474 20847 model.cc:431] Registered images: 218
+    I20250614 07:42:12.615476 20847 model.cc:433] Points: 77096
+    I20250614 07:42:12.615478 20847 model.cc:434] Observations: 777578
+    I20250614 07:42:12.615487 20847 model.cc:436] Mean track length: 10.085841
+    I20250614 07:42:12.615370 20847 model.cc:429] Cameras: 1
+    I20250614 07:42:12.615468 20847 model.cc:430] Images: 218
+    I20250614 07:42:12.615474 20847 model.cc:431] Registered images: 218
+    I20250614 07:42:12.615476 20847 model.cc:433] Points: 77096
+    I20250614 07:42:12.615478 20847 model.cc:434] Observations: 777578
+    I20250614 07:42:12.615487 20847 model.cc:436] Mean track length: 10.085841
+    I20250614 07:42:12.615494 20847 model.cc:438] Mean observations per image: 3566.871560
+    I20250614 07:42:12.615370 20847 model.cc:429] Cameras: 1
+    I20250614 07:42:12.615468 20847 model.cc:430] Images: 218
+    I20250614 07:42:12.615474 20847 model.cc:431] Registered images: 218
+    I20250614 07:42:12.615476 20847 model.cc:433] Points: 77096
+    I20250614 07:42:12.615478 20847 model.cc:434] Observations: 777578
+    I20250614 07:42:12.615487 20847 model.cc:436] Mean track length: 10.085841
+    I20250614 07:42:12.615494 20847 model.cc:438] Mean observations per image: 3566.871560
+    I20250614 07:42:12.615497 20847 model.cc:441] Mean reprojection error: 0.890994px
+    I20250614 07:42:12.823818 20848 model.cc:429] Cameras: 1
+    I20250614 07:42:12.823818 20848 model.cc:429] Cameras: 1
+    I20250614 07:42:12.823897 20848 model.cc:430] Images: 218
+    I20250614 07:42:12.823818 20848 model.cc:429] Cameras: 1
+    I20250614 07:42:12.823897 20848 model.cc:430] Images: 218
+    I20250614 07:42:12.823902 20848 model.cc:431] Registered images: 218
+    I20250614 07:42:12.823818 20848 model.cc:429] Cameras: 1
+    I20250614 07:42:12.823897 20848 model.cc:430] Images: 218
+    I20250614 07:42:12.823902 20848 model.cc:431] Registered images: 218
+    I20250614 07:42:12.823905 20848 model.cc:433] Points: 78454
+    I20250614 07:42:12.823818 20848 model.cc:429] Cameras: 1
+    I20250614 07:42:12.823897 20848 model.cc:430] Images: 218
+    I20250614 07:42:12.823902 20848 model.cc:431] Registered images: 218
+    I20250614 07:42:12.823905 20848 model.cc:433] Points: 78454
+    I20250614 07:42:12.823907 20848 model.cc:434] Observations: 857696
+    I20250614 07:42:12.823818 20848 model.cc:429] Cameras: 1
+    I20250614 07:42:12.823897 20848 model.cc:430] Images: 218
+    I20250614 07:42:12.823902 20848 model.cc:431] Registered images: 218
+    I20250614 07:42:12.823905 20848 model.cc:433] Points: 78454
+    I20250614 07:42:12.823907 20848 model.cc:434] Observations: 857696
+    I20250614 07:42:12.823916 20848 model.cc:436] Mean track length: 10.932470
+    I20250614 07:42:12.823818 20848 model.cc:429] Cameras: 1
+    I20250614 07:42:12.823897 20848 model.cc:430] Images: 218
+    I20250614 07:42:12.823902 20848 model.cc:431] Registered images: 218
+    I20250614 07:42:12.823905 20848 model.cc:433] Points: 78454
+    I20250614 07:42:12.823907 20848 model.cc:434] Observations: 857696
+    I20250614 07:42:12.823916 20848 model.cc:436] Mean track length: 10.932470
+    I20250614 07:42:12.823921 20848 model.cc:438] Mean observations per image: 3934.385321
+    I20250614 07:42:12.823818 20848 model.cc:429] Cameras: 1
+    I20250614 07:42:12.823897 20848 model.cc:430] Images: 218
+    I20250614 07:42:12.823902 20848 model.cc:431] Registered images: 218
+    I20250614 07:42:12.823905 20848 model.cc:433] Points: 78454
+    I20250614 07:42:12.823907 20848 model.cc:434] Observations: 857696
+    I20250614 07:42:12.823916 20848 model.cc:436] Mean track length: 10.932470
+    I20250614 07:42:12.823921 20848 model.cc:438] Mean observations per image: 3934.385321
+    I20250614 07:42:12.823925 20848 model.cc:441] Mean reprojection error: 0.905284px
+    I20250614 07:42:13.068886 20849 model.cc:429] Cameras: 1
+    I20250614 07:42:13.068886 20849 model.cc:429] Cameras: 1
+    I20250614 07:42:13.069023 20849 model.cc:430] Images: 255
+    I20250614 07:42:13.068886 20849 model.cc:429] Cameras: 1
+    I20250614 07:42:13.069023 20849 model.cc:430] Images: 255
+    I20250614 07:42:13.069033 20849 model.cc:431] Registered images: 255
+    I20250614 07:42:13.068886 20849 model.cc:429] Cameras: 1
+    I20250614 07:42:13.069023 20849 model.cc:430] Images: 255
+    I20250614 07:42:13.069033 20849 model.cc:431] Registered images: 255
+    I20250614 07:42:13.069058 20849 model.cc:433] Points: 86245
+    I20250614 07:42:13.068886 20849 model.cc:429] Cameras: 1
+    I20250614 07:42:13.069023 20849 model.cc:430] Images: 255
+    I20250614 07:42:13.069033 20849 model.cc:431] Registered images: 255
+    I20250614 07:42:13.069058 20849 model.cc:433] Points: 86245
+    I20250614 07:42:13.069084 20849 model.cc:434] Observations: 927496
+    I20250614 07:42:13.068886 20849 model.cc:429] Cameras: 1
+    I20250614 07:42:13.069023 20849 model.cc:430] Images: 255
+    I20250614 07:42:13.069033 20849 model.cc:431] Registered images: 255
+    I20250614 07:42:13.069058 20849 model.cc:433] Points: 86245
+    I20250614 07:42:13.069084 20849 model.cc:434] Observations: 927496
+    I20250614 07:42:13.069121 20849 model.cc:436] Mean track length: 10.754200
+    I20250614 07:42:13.068886 20849 model.cc:429] Cameras: 1
+    I20250614 07:42:13.069023 20849 model.cc:430] Images: 255
+    I20250614 07:42:13.069033 20849 model.cc:431] Registered images: 255
+    I20250614 07:42:13.069058 20849 model.cc:433] Points: 86245
+    I20250614 07:42:13.069084 20849 model.cc:434] Observations: 927496
+    I20250614 07:42:13.069121 20849 model.cc:436] Mean track length: 10.754200
+    I20250614 07:42:13.069154 20849 model.cc:438] Mean observations per image: 3637.239216
+    I20250614 07:42:13.068886 20849 model.cc:429] Cameras: 1
+    I20250614 07:42:13.069023 20849 model.cc:430] Images: 255
+    I20250614 07:42:13.069033 20849 model.cc:431] Registered images: 255
+    I20250614 07:42:13.069058 20849 model.cc:433] Points: 86245
+    I20250614 07:42:13.069084 20849 model.cc:434] Observations: 927496
+    I20250614 07:42:13.069121 20849 model.cc:436] Mean track length: 10.754200
+    I20250614 07:42:13.069154 20849 model.cc:438] Mean observations per image: 3637.239216
+    I20250614 07:42:13.069183 20849 model.cc:441] Mean reprojection error: 0.894097px
+    I20250614 07:42:13.310655 20850 model.cc:429] Cameras: 1
+    I20250614 07:42:13.310655 20850 model.cc:429] Cameras: 1
+    I20250614 07:42:13.310767 20850 model.cc:430] Images: 255
+    I20250614 07:42:13.310655 20850 model.cc:429] Cameras: 1
+    I20250614 07:42:13.310767 20850 model.cc:430] Images: 255
+    I20250614 07:42:13.310793 20850 model.cc:431] Registered images: 255
+    I20250614 07:42:13.310655 20850 model.cc:429] Cameras: 1
+    I20250614 07:42:13.310767 20850 model.cc:430] Images: 255
+    I20250614 07:42:13.310793 20850 model.cc:431] Registered images: 255
+    I20250614 07:42:13.310817 20850 model.cc:433] Points: 92138
+    I20250614 07:42:13.310655 20850 model.cc:429] Cameras: 1
+    I20250614 07:42:13.310767 20850 model.cc:430] Images: 255
+    I20250614 07:42:13.310793 20850 model.cc:431] Registered images: 255
+    I20250614 07:42:13.310817 20850 model.cc:433] Points: 92138
+    I20250614 07:42:13.310840 20850 model.cc:434] Observations: 1096166
+    I20250614 07:42:13.310655 20850 model.cc:429] Cameras: 1
+    I20250614 07:42:13.310767 20850 model.cc:430] Images: 255
+    I20250614 07:42:13.310793 20850 model.cc:431] Registered images: 255
+    I20250614 07:42:13.310817 20850 model.cc:433] Points: 92138
+    I20250614 07:42:13.310840 20850 model.cc:434] Observations: 1096166
+    I20250614 07:42:13.310904 20850 model.cc:436] Mean track length: 11.897002
+    I20250614 07:42:13.310655 20850 model.cc:429] Cameras: 1
+    I20250614 07:42:13.310767 20850 model.cc:430] Images: 255
+    I20250614 07:42:13.310793 20850 model.cc:431] Registered images: 255
+    I20250614 07:42:13.310817 20850 model.cc:433] Points: 92138
+    I20250614 07:42:13.310840 20850 model.cc:434] Observations: 1096166
+    I20250614 07:42:13.310904 20850 model.cc:436] Mean track length: 11.897002
+    I20250614 07:42:13.310967 20850 model.cc:438] Mean observations per image: 4298.690196
+    I20250614 07:42:13.310655 20850 model.cc:429] Cameras: 1
+    I20250614 07:42:13.310767 20850 model.cc:430] Images: 255
+    I20250614 07:42:13.310793 20850 model.cc:431] Registered images: 255
+    I20250614 07:42:13.310817 20850 model.cc:433] Points: 92138
+    I20250614 07:42:13.310840 20850 model.cc:434] Observations: 1096166
+    I20250614 07:42:13.310904 20850 model.cc:436] Mean track length: 11.897002
+    I20250614 07:42:13.310967 20850 model.cc:438] Mean observations per image: 4298.690196
+    I20250614 07:42:13.310972 20850 model.cc:441] Mean reprojection error: 0.907166px
+    I20250614 07:42:13.586758 20851 model.cc:429] Cameras: 1
+    I20250614 07:42:13.586758 20851 model.cc:429] Cameras: 1
+    I20250614 07:42:13.586855 20851 model.cc:430] Images: 291
+    I20250614 07:42:13.586758 20851 model.cc:429] Cameras: 1
+    I20250614 07:42:13.586855 20851 model.cc:430] Images: 291
+    I20250614 07:42:13.586861 20851 model.cc:431] Registered images: 291
+    I20250614 07:42:13.586758 20851 model.cc:429] Cameras: 1
+    I20250614 07:42:13.586855 20851 model.cc:430] Images: 291
+    I20250614 07:42:13.586861 20851 model.cc:431] Registered images: 291
+    I20250614 07:42:13.586864 20851 model.cc:433] Points: 98548
+    I20250614 07:42:13.586758 20851 model.cc:429] Cameras: 1
+    I20250614 07:42:13.586855 20851 model.cc:430] Images: 291
+    I20250614 07:42:13.586861 20851 model.cc:431] Registered images: 291
+    I20250614 07:42:13.586864 20851 model.cc:433] Points: 98548
+    I20250614 07:42:13.586866 20851 model.cc:434] Observations: 1127732
+    I20250614 07:42:13.586758 20851 model.cc:429] Cameras: 1
+    I20250614 07:42:13.586855 20851 model.cc:430] Images: 291
+    I20250614 07:42:13.586861 20851 model.cc:431] Registered images: 291
+    I20250614 07:42:13.586864 20851 model.cc:433] Points: 98548
+    I20250614 07:42:13.586866 20851 model.cc:434] Observations: 1127732
+    I20250614 07:42:13.586879 20851 model.cc:436] Mean track length: 11.443479
+    I20250614 07:42:13.586758 20851 model.cc:429] Cameras: 1
+    I20250614 07:42:13.586855 20851 model.cc:430] Images: 291
+    I20250614 07:42:13.586861 20851 model.cc:431] Registered images: 291
+    I20250614 07:42:13.586864 20851 model.cc:433] Points: 98548
+    I20250614 07:42:13.586866 20851 model.cc:434] Observations: 1127732
+    I20250614 07:42:13.586879 20851 model.cc:436] Mean track length: 11.443479
+    I20250614 07:42:13.586884 20851 model.cc:438] Mean observations per image: 3875.367698
+    I20250614 07:42:13.586758 20851 model.cc:429] Cameras: 1
+    I20250614 07:42:13.586855 20851 model.cc:430] Images: 291
+    I20250614 07:42:13.586861 20851 model.cc:431] Registered images: 291
+    I20250614 07:42:13.586864 20851 model.cc:433] Points: 98548
+    I20250614 07:42:13.586866 20851 model.cc:434] Observations: 1127732
+    I20250614 07:42:13.586879 20851 model.cc:436] Mean track length: 11.443479
+    I20250614 07:42:13.586884 20851 model.cc:438] Mean observations per image: 3875.367698
+    I20250614 07:42:13.586887 20851 model.cc:441] Mean reprojection error: 0.895558px
+    I20250614 07:42:13.841737 20852 model.cc:429] Cameras: 1
+    I20250614 07:42:13.841737 20852 model.cc:429] Cameras: 1
+    I20250614 07:42:13.841821 20852 model.cc:430] Images: 291
+    I20250614 07:42:13.841737 20852 model.cc:429] Cameras: 1
+    I20250614 07:42:13.841821 20852 model.cc:430] Images: 291
+    I20250614 07:42:13.841826 20852 model.cc:431] Registered images: 291
+    I20250614 07:42:13.841737 20852 model.cc:429] Cameras: 1
+    I20250614 07:42:13.841821 20852 model.cc:430] Images: 291
+    I20250614 07:42:13.841826 20852 model.cc:431] Registered images: 291
+    I20250614 07:42:13.841830 20852 model.cc:433] Points: 97974
+    I20250614 07:42:13.841737 20852 model.cc:429] Cameras: 1
+    I20250614 07:42:13.841821 20852 model.cc:430] Images: 291
+    I20250614 07:42:13.841826 20852 model.cc:431] Registered images: 291
+    I20250614 07:42:13.841830 20852 model.cc:433] Points: 97974
+    I20250614 07:42:13.841832 20852 model.cc:434] Observations: 1115188
+    I20250614 07:42:13.841737 20852 model.cc:429] Cameras: 1
+    I20250614 07:42:13.841821 20852 model.cc:430] Images: 291
+    I20250614 07:42:13.841826 20852 model.cc:431] Registered images: 291
+    I20250614 07:42:13.841830 20852 model.cc:433] Points: 97974
+    I20250614 07:42:13.841832 20852 model.cc:434] Observations: 1115188
+    I20250614 07:42:13.841845 20852 model.cc:436] Mean track length: 11.382489
+    I20250614 07:42:13.841737 20852 model.cc:429] Cameras: 1
+    I20250614 07:42:13.841821 20852 model.cc:430] Images: 291
+    I20250614 07:42:13.841826 20852 model.cc:431] Registered images: 291
+    I20250614 07:42:13.841830 20852 model.cc:433] Points: 97974
+    I20250614 07:42:13.841832 20852 model.cc:434] Observations: 1115188
+    I20250614 07:42:13.841845 20852 model.cc:436] Mean track length: 11.382489
+    I20250614 07:42:13.841862 20852 model.cc:438] Mean observations per image: 3832.261168
+    I20250614 07:42:13.841737 20852 model.cc:429] Cameras: 1
+    I20250614 07:42:13.841821 20852 model.cc:430] Images: 291
+    I20250614 07:42:13.841826 20852 model.cc:431] Registered images: 291
+    I20250614 07:42:13.841830 20852 model.cc:433] Points: 97974
+    I20250614 07:42:13.841832 20852 model.cc:434] Observations: 1115188
+    I20250614 07:42:13.841845 20852 model.cc:436] Mean track length: 11.382489
+    I20250614 07:42:13.841862 20852 model.cc:438] Mean observations per image: 3832.261168
+    I20250614 07:42:13.841866 20852 model.cc:441] Mean reprojection error: 0.895136px
+    I20250614 07:42:14.137015 20853 model.cc:429] Cameras: 1
+    I20250614 07:42:14.137015 20853 model.cc:429] Cameras: 1
+    I20250614 07:42:14.137104 20853 model.cc:430] Images: 291
+    I20250614 07:42:14.137015 20853 model.cc:429] Cameras: 1
+    I20250614 07:42:14.137104 20853 model.cc:430] Images: 291
+    I20250614 07:42:14.137109 20853 model.cc:431] Registered images: 291
+    I20250614 07:42:14.137015 20853 model.cc:429] Cameras: 1
+    I20250614 07:42:14.137104 20853 model.cc:430] Images: 291
+    I20250614 07:42:14.137109 20853 model.cc:431] Registered images: 291
+    I20250614 07:42:14.137112 20853 model.cc:433] Points: 99912
+    I20250614 07:42:14.137015 20853 model.cc:429] Cameras: 1
+    I20250614 07:42:14.137104 20853 model.cc:430] Images: 291
+    I20250614 07:42:14.137109 20853 model.cc:431] Registered images: 291
+    I20250614 07:42:14.137112 20853 model.cc:433] Points: 99912
+    I20250614 07:42:14.137115 20853 model.cc:434] Observations: 1224317
+    I20250614 07:42:14.137015 20853 model.cc:429] Cameras: 1
+    I20250614 07:42:14.137104 20853 model.cc:430] Images: 291
+    I20250614 07:42:14.137109 20853 model.cc:431] Registered images: 291
+    I20250614 07:42:14.137112 20853 model.cc:433] Points: 99912
+    I20250614 07:42:14.137115 20853 model.cc:434] Observations: 1224317
+    I20250614 07:42:14.137125 20853 model.cc:436] Mean track length: 12.253953
+    I20250614 07:42:14.137015 20853 model.cc:429] Cameras: 1
+    I20250614 07:42:14.137104 20853 model.cc:430] Images: 291
+    I20250614 07:42:14.137109 20853 model.cc:431] Registered images: 291
+    I20250614 07:42:14.137112 20853 model.cc:433] Points: 99912
+    I20250614 07:42:14.137115 20853 model.cc:434] Observations: 1224317
+    I20250614 07:42:14.137125 20853 model.cc:436] Mean track length: 12.253953
+    I20250614 07:42:14.137133 20853 model.cc:438] Mean observations per image: 4207.274914
+    I20250614 07:42:14.137015 20853 model.cc:429] Cameras: 1
+    I20250614 07:42:14.137104 20853 model.cc:430] Images: 291
+    I20250614 07:42:14.137109 20853 model.cc:431] Registered images: 291
+    I20250614 07:42:14.137112 20853 model.cc:433] Points: 99912
+    I20250614 07:42:14.137115 20853 model.cc:434] Observations: 1224317
+    I20250614 07:42:14.137125 20853 model.cc:436] Mean track length: 12.253953
+    I20250614 07:42:14.137133 20853 model.cc:438] Mean observations per image: 4207.274914
+    I20250614 07:42:14.137137 20853 model.cc:441] Mean reprojection error: 0.900470px
+    I20250614 07:42:14.431715 20854 model.cc:429] Cameras: 1
+    I20250614 07:42:14.431715 20854 model.cc:429] Cameras: 1
+    I20250614 07:42:14.431843 20854 model.cc:430] Images: 327
+    I20250614 07:42:14.431715 20854 model.cc:429] Cameras: 1
+    I20250614 07:42:14.431843 20854 model.cc:430] Images: 327
+    I20250614 07:42:14.431854 20854 model.cc:431] Registered images: 327
+    I20250614 07:42:14.431715 20854 model.cc:429] Cameras: 1
+    I20250614 07:42:14.431843 20854 model.cc:430] Images: 327
+    I20250614 07:42:14.431854 20854 model.cc:431] Registered images: 327
+    I20250614 07:42:14.431860 20854 model.cc:433] Points: 107488
+    I20250614 07:42:14.431715 20854 model.cc:429] Cameras: 1
+    I20250614 07:42:14.431843 20854 model.cc:430] Images: 327
+    I20250614 07:42:14.431854 20854 model.cc:431] Registered images: 327
+    I20250614 07:42:14.431860 20854 model.cc:433] Points: 107488
+    I20250614 07:42:14.431885 20854 model.cc:434] Observations: 1255582
+    I20250614 07:42:14.431715 20854 model.cc:429] Cameras: 1
+    I20250614 07:42:14.431843 20854 model.cc:430] Images: 327
+    I20250614 07:42:14.431854 20854 model.cc:431] Registered images: 327
+    I20250614 07:42:14.431860 20854 model.cc:433] Points: 107488
+    I20250614 07:42:14.431885 20854 model.cc:434] Observations: 1255582
+    I20250614 07:42:14.431926 20854 model.cc:436] Mean track length: 11.681136
+    I20250614 07:42:14.431715 20854 model.cc:429] Cameras: 1
+    I20250614 07:42:14.431843 20854 model.cc:430] Images: 327
+    I20250614 07:42:14.431854 20854 model.cc:431] Registered images: 327
+    I20250614 07:42:14.431860 20854 model.cc:433] Points: 107488
+    I20250614 07:42:14.431885 20854 model.cc:434] Observations: 1255582
+    I20250614 07:42:14.431926 20854 model.cc:436] Mean track length: 11.681136
+    I20250614 07:42:14.431959 20854 model.cc:438] Mean observations per image: 3839.700306
+    I20250614 07:42:14.431715 20854 model.cc:429] Cameras: 1
+    I20250614 07:42:14.431843 20854 model.cc:430] Images: 327
+    I20250614 07:42:14.431854 20854 model.cc:431] Registered images: 327
+    I20250614 07:42:14.431860 20854 model.cc:433] Points: 107488
+    I20250614 07:42:14.431885 20854 model.cc:434] Observations: 1255582
+    I20250614 07:42:14.431926 20854 model.cc:436] Mean track length: 11.681136
+    I20250614 07:42:14.431959 20854 model.cc:438] Mean observations per image: 3839.700306
+    I20250614 07:42:14.431990 20854 model.cc:441] Mean reprojection error: 0.893862px
+    I20250614 07:42:14.730094 20855 model.cc:429] Cameras: 1
+    I20250614 07:42:14.730094 20855 model.cc:429] Cameras: 1
+    I20250614 07:42:14.730175 20855 model.cc:430] Images: 327
+    I20250614 07:42:14.730094 20855 model.cc:429] Cameras: 1
+    I20250614 07:42:14.730175 20855 model.cc:430] Images: 327
+    I20250614 07:42:14.730180 20855 model.cc:431] Registered images: 327
+    I20250614 07:42:14.730094 20855 model.cc:429] Cameras: 1
+    I20250614 07:42:14.730175 20855 model.cc:430] Images: 327
+    I20250614 07:42:14.730180 20855 model.cc:431] Registered images: 327
+    I20250614 07:42:14.730196 20855 model.cc:433] Points: 109061
+    I20250614 07:42:14.730094 20855 model.cc:429] Cameras: 1
+    I20250614 07:42:14.730175 20855 model.cc:430] Images: 327
+    I20250614 07:42:14.730180 20855 model.cc:431] Registered images: 327
+    I20250614 07:42:14.730196 20855 model.cc:433] Points: 109061
+    I20250614 07:42:14.730201 20855 model.cc:434] Observations: 1394880
+    I20250614 07:42:14.730094 20855 model.cc:429] Cameras: 1
+    I20250614 07:42:14.730175 20855 model.cc:430] Images: 327
+    I20250614 07:42:14.730180 20855 model.cc:431] Registered images: 327
+    I20250614 07:42:14.730196 20855 model.cc:433] Points: 109061
+    I20250614 07:42:14.730201 20855 model.cc:434] Observations: 1394880
+    I20250614 07:42:14.730221 20855 model.cc:436] Mean track length: 12.789907
+    I20250614 07:42:14.730094 20855 model.cc:429] Cameras: 1
+    I20250614 07:42:14.730175 20855 model.cc:430] Images: 327
+    I20250614 07:42:14.730180 20855 model.cc:431] Registered images: 327
+    I20250614 07:42:14.730196 20855 model.cc:433] Points: 109061
+    I20250614 07:42:14.730201 20855 model.cc:434] Observations: 1394880
+    I20250614 07:42:14.730221 20855 model.cc:436] Mean track length: 12.789907
+    I20250614 07:42:14.730237 20855 model.cc:438] Mean observations per image: 4265.688073
+    I20250614 07:42:14.730094 20855 model.cc:429] Cameras: 1
+    I20250614 07:42:14.730175 20855 model.cc:430] Images: 327
+    I20250614 07:42:14.730180 20855 model.cc:431] Registered images: 327
+    I20250614 07:42:14.730196 20855 model.cc:433] Points: 109061
+    I20250614 07:42:14.730201 20855 model.cc:434] Observations: 1394880
+    I20250614 07:42:14.730221 20855 model.cc:436] Mean track length: 12.789907
+    I20250614 07:42:14.730237 20855 model.cc:438] Mean observations per image: 4265.688073
+    I20250614 07:42:14.730242 20855 model.cc:441] Mean reprojection error: 0.904425px
+    I20250614 07:42:14.869690 20856 model.cc:429] Cameras: 1
+    I20250614 07:42:14.869690 20856 model.cc:429] Cameras: 1
+    I20250614 07:42:14.869774 20856 model.cc:430] Images: 159
+    I20250614 07:42:14.869690 20856 model.cc:429] Cameras: 1
+    I20250614 07:42:14.869774 20856 model.cc:430] Images: 159
+    I20250614 07:42:14.869779 20856 model.cc:431] Registered images: 159
+    I20250614 07:42:14.869690 20856 model.cc:429] Cameras: 1
+    I20250614 07:42:14.869774 20856 model.cc:430] Images: 159
+    I20250614 07:42:14.869779 20856 model.cc:431] Registered images: 159
+    I20250614 07:42:14.869782 20856 model.cc:433] Points: 65950
+    I20250614 07:42:14.869690 20856 model.cc:429] Cameras: 1
+    I20250614 07:42:14.869774 20856 model.cc:430] Images: 159
+    I20250614 07:42:14.869779 20856 model.cc:431] Registered images: 159
+    I20250614 07:42:14.869782 20856 model.cc:433] Points: 65950
+    I20250614 07:42:14.869786 20856 model.cc:434] Observations: 368685
+    I20250614 07:42:14.869690 20856 model.cc:429] Cameras: 1
+    I20250614 07:42:14.869774 20856 model.cc:430] Images: 159
+    I20250614 07:42:14.869779 20856 model.cc:431] Registered images: 159
+    I20250614 07:42:14.869782 20856 model.cc:433] Points: 65950
+    I20250614 07:42:14.869786 20856 model.cc:434] Observations: 368685
+    I20250614 07:42:14.869791 20856 model.cc:436] Mean track length: 5.590371
+    I20250614 07:42:14.869690 20856 model.cc:429] Cameras: 1
+    I20250614 07:42:14.869774 20856 model.cc:430] Images: 159
+    I20250614 07:42:14.869779 20856 model.cc:431] Registered images: 159
+    I20250614 07:42:14.869782 20856 model.cc:433] Points: 65950
+    I20250614 07:42:14.869786 20856 model.cc:434] Observations: 368685
+    I20250614 07:42:14.869791 20856 model.cc:436] Mean track length: 5.590371
+    I20250614 07:42:14.869805 20856 model.cc:438] Mean observations per image: 2318.773585
+    I20250614 07:42:14.869690 20856 model.cc:429] Cameras: 1
+    I20250614 07:42:14.869774 20856 model.cc:430] Images: 159
+    I20250614 07:42:14.869779 20856 model.cc:431] Registered images: 159
+    I20250614 07:42:14.869782 20856 model.cc:433] Points: 65950
+    I20250614 07:42:14.869786 20856 model.cc:434] Observations: 368685
+    I20250614 07:42:14.869791 20856 model.cc:436] Mean track length: 5.590371
+    I20250614 07:42:14.869805 20856 model.cc:438] Mean observations per image: 2318.773585
+    I20250614 07:42:14.869810 20856 model.cc:441] Mean reprojection error: 0.747429px
+    I20250614 07:42:15.018765 20862 model.cc:429] Cameras: 1
+    I20250614 07:42:15.018765 20862 model.cc:429] Cameras: 1
+    I20250614 07:42:15.018852 20862 model.cc:430] Images: 159
+    I20250614 07:42:15.018765 20862 model.cc:429] Cameras: 1
+    I20250614 07:42:15.018852 20862 model.cc:430] Images: 159
+    I20250614 07:42:15.018857 20862 model.cc:431] Registered images: 159
+    I20250614 07:42:15.018765 20862 model.cc:429] Cameras: 1
+    I20250614 07:42:15.018852 20862 model.cc:430] Images: 159
+    I20250614 07:42:15.018857 20862 model.cc:431] Registered images: 159
+    I20250614 07:42:15.018860 20862 model.cc:433] Points: 70964
+    I20250614 07:42:15.018765 20862 model.cc:429] Cameras: 1
+    I20250614 07:42:15.018852 20862 model.cc:430] Images: 159
+    I20250614 07:42:15.018857 20862 model.cc:431] Registered images: 159
+    I20250614 07:42:15.018860 20862 model.cc:433] Points: 70964
+    I20250614 07:42:15.018862 20862 model.cc:434] Observations: 400297
+    I20250614 07:42:15.018765 20862 model.cc:429] Cameras: 1
+    I20250614 07:42:15.018852 20862 model.cc:430] Images: 159
+    I20250614 07:42:15.018857 20862 model.cc:431] Registered images: 159
+    I20250614 07:42:15.018860 20862 model.cc:433] Points: 70964
+    I20250614 07:42:15.018862 20862 model.cc:434] Observations: 400297
+    I20250614 07:42:15.018869 20862 model.cc:436] Mean track length: 5.640846
+    I20250614 07:42:15.018765 20862 model.cc:429] Cameras: 1
+    I20250614 07:42:15.018852 20862 model.cc:430] Images: 159
+    I20250614 07:42:15.018857 20862 model.cc:431] Registered images: 159
+    I20250614 07:42:15.018860 20862 model.cc:433] Points: 70964
+    I20250614 07:42:15.018862 20862 model.cc:434] Observations: 400297
+    I20250614 07:42:15.018869 20862 model.cc:436] Mean track length: 5.640846
+    I20250614 07:42:15.018874 20862 model.cc:438] Mean observations per image: 2517.591195
+    I20250614 07:42:15.018765 20862 model.cc:429] Cameras: 1
+    I20250614 07:42:15.018852 20862 model.cc:430] Images: 159
+    I20250614 07:42:15.018857 20862 model.cc:431] Registered images: 159
+    I20250614 07:42:15.018860 20862 model.cc:433] Points: 70964
+    I20250614 07:42:15.018862 20862 model.cc:434] Observations: 400297
+    I20250614 07:42:15.018869 20862 model.cc:436] Mean track length: 5.640846
+    I20250614 07:42:15.018874 20862 model.cc:438] Mean observations per image: 2517.591195
+    I20250614 07:42:15.018877 20862 model.cc:441] Mean reprojection error: 0.725801px
+    I20250614 07:42:15.175520 20863 model.cc:429] Cameras: 1
+    I20250614 07:42:15.175520 20863 model.cc:429] Cameras: 1
+    I20250614 07:42:15.175601 20863 model.cc:430] Images: 185
+    I20250614 07:42:15.175520 20863 model.cc:429] Cameras: 1
+    I20250614 07:42:15.175601 20863 model.cc:430] Images: 185
+    I20250614 07:42:15.175606 20863 model.cc:431] Registered images: 185
+    I20250614 07:42:15.175520 20863 model.cc:429] Cameras: 1
+    I20250614 07:42:15.175601 20863 model.cc:430] Images: 185
+    I20250614 07:42:15.175606 20863 model.cc:431] Registered images: 185
+    I20250614 07:42:15.175609 20863 model.cc:433] Points: 80547
+    I20250614 07:42:15.175520 20863 model.cc:429] Cameras: 1
+    I20250614 07:42:15.175601 20863 model.cc:430] Images: 185
+    I20250614 07:42:15.175606 20863 model.cc:431] Registered images: 185
+    I20250614 07:42:15.175609 20863 model.cc:433] Points: 80547
+    I20250614 07:42:15.175611 20863 model.cc:434] Observations: 475549
+    I20250614 07:42:15.175520 20863 model.cc:429] Cameras: 1
+    I20250614 07:42:15.175601 20863 model.cc:430] Images: 185
+    I20250614 07:42:15.175606 20863 model.cc:431] Registered images: 185
+    I20250614 07:42:15.175609 20863 model.cc:433] Points: 80547
+    I20250614 07:42:15.175611 20863 model.cc:434] Observations: 475549
+    I20250614 07:42:15.175626 20863 model.cc:436] Mean track length: 5.903994
+    I20250614 07:42:15.175520 20863 model.cc:429] Cameras: 1
+    I20250614 07:42:15.175601 20863 model.cc:430] Images: 185
+    I20250614 07:42:15.175606 20863 model.cc:431] Registered images: 185
+    I20250614 07:42:15.175609 20863 model.cc:433] Points: 80547
+    I20250614 07:42:15.175611 20863 model.cc:434] Observations: 475549
+    I20250614 07:42:15.175626 20863 model.cc:436] Mean track length: 5.903994
+    I20250614 07:42:15.175632 20863 model.cc:438] Mean observations per image: 2570.535135
+    I20250614 07:42:15.175520 20863 model.cc:429] Cameras: 1
+    I20250614 07:42:15.175601 20863 model.cc:430] Images: 185
+    I20250614 07:42:15.175606 20863 model.cc:431] Registered images: 185
+    I20250614 07:42:15.175609 20863 model.cc:433] Points: 80547
+    I20250614 07:42:15.175611 20863 model.cc:434] Observations: 475549
+    I20250614 07:42:15.175626 20863 model.cc:436] Mean track length: 5.903994
+    I20250614 07:42:15.175632 20863 model.cc:438] Mean observations per image: 2570.535135
+    I20250614 07:42:15.175644 20863 model.cc:441] Mean reprojection error: 0.755927px
+    I20250614 07:42:15.337579 20864 model.cc:429] Cameras: 1
+    I20250614 07:42:15.337579 20864 model.cc:429] Cameras: 1
+    I20250614 07:42:15.337670 20864 model.cc:430] Images: 185
+    I20250614 07:42:15.337579 20864 model.cc:429] Cameras: 1
+    I20250614 07:42:15.337670 20864 model.cc:430] Images: 185
+    I20250614 07:42:15.337675 20864 model.cc:431] Registered images: 185
+    I20250614 07:42:15.337579 20864 model.cc:429] Cameras: 1
+    I20250614 07:42:15.337670 20864 model.cc:430] Images: 185
+    I20250614 07:42:15.337675 20864 model.cc:431] Registered images: 185
+    I20250614 07:42:15.337678 20864 model.cc:433] Points: 87274
+    I20250614 07:42:15.337579 20864 model.cc:429] Cameras: 1
+    I20250614 07:42:15.337670 20864 model.cc:430] Images: 185
+    I20250614 07:42:15.337675 20864 model.cc:431] Registered images: 185
+    I20250614 07:42:15.337678 20864 model.cc:433] Points: 87274
+    I20250614 07:42:15.337682 20864 model.cc:434] Observations: 517855
+    I20250614 07:42:15.337579 20864 model.cc:429] Cameras: 1
+    I20250614 07:42:15.337670 20864 model.cc:430] Images: 185
+    I20250614 07:42:15.337675 20864 model.cc:431] Registered images: 185
+    I20250614 07:42:15.337678 20864 model.cc:433] Points: 87274
+    I20250614 07:42:15.337682 20864 model.cc:434] Observations: 517855
+    I20250614 07:42:15.337688 20864 model.cc:436] Mean track length: 5.933669
+    I20250614 07:42:15.337579 20864 model.cc:429] Cameras: 1
+    I20250614 07:42:15.337670 20864 model.cc:430] Images: 185
+    I20250614 07:42:15.337675 20864 model.cc:431] Registered images: 185
+    I20250614 07:42:15.337678 20864 model.cc:433] Points: 87274
+    I20250614 07:42:15.337682 20864 model.cc:434] Observations: 517855
+    I20250614 07:42:15.337688 20864 model.cc:436] Mean track length: 5.933669
+    I20250614 07:42:15.337697 20864 model.cc:438] Mean observations per image: 2799.216216
+    I20250614 07:42:15.337579 20864 model.cc:429] Cameras: 1
+    I20250614 07:42:15.337670 20864 model.cc:430] Images: 185
+    I20250614 07:42:15.337675 20864 model.cc:431] Registered images: 185
+    I20250614 07:42:15.337678 20864 model.cc:433] Points: 87274
+    I20250614 07:42:15.337682 20864 model.cc:434] Observations: 517855
+    I20250614 07:42:15.337688 20864 model.cc:436] Mean track length: 5.933669
+    I20250614 07:42:15.337697 20864 model.cc:438] Mean observations per image: 2799.216216
+    I20250614 07:42:15.337702 20864 model.cc:441] Mean reprojection error: 0.731209px
+    I20250614 07:42:15.527184 20865 model.cc:429] Cameras: 1
+    I20250614 07:42:15.527184 20865 model.cc:429] Cameras: 1
+    I20250614 07:42:15.527271 20865 model.cc:430] Images: 212
+    I20250614 07:42:15.527184 20865 model.cc:429] Cameras: 1
+    I20250614 07:42:15.527271 20865 model.cc:430] Images: 212
+    I20250614 07:42:15.527276 20865 model.cc:431] Registered images: 212
+    I20250614 07:42:15.527184 20865 model.cc:429] Cameras: 1
+    I20250614 07:42:15.527271 20865 model.cc:430] Images: 212
+    I20250614 07:42:15.527276 20865 model.cc:431] Registered images: 212
+    I20250614 07:42:15.527279 20865 model.cc:433] Points: 95777
+    I20250614 07:42:15.527184 20865 model.cc:429] Cameras: 1
+    I20250614 07:42:15.527271 20865 model.cc:430] Images: 212
+    I20250614 07:42:15.527276 20865 model.cc:431] Registered images: 212
+    I20250614 07:42:15.527279 20865 model.cc:433] Points: 95777
+    I20250614 07:42:15.527281 20865 model.cc:434] Observations: 590818
+    I20250614 07:42:15.527184 20865 model.cc:429] Cameras: 1
+    I20250614 07:42:15.527271 20865 model.cc:430] Images: 212
+    I20250614 07:42:15.527276 20865 model.cc:431] Registered images: 212
+    I20250614 07:42:15.527279 20865 model.cc:433] Points: 95777
+    I20250614 07:42:15.527281 20865 model.cc:434] Observations: 590818
+    I20250614 07:42:15.527290 20865 model.cc:436] Mean track length: 6.168684
+    I20250614 07:42:15.527184 20865 model.cc:429] Cameras: 1
+    I20250614 07:42:15.527271 20865 model.cc:430] Images: 212
+    I20250614 07:42:15.527276 20865 model.cc:431] Registered images: 212
+    I20250614 07:42:15.527279 20865 model.cc:433] Points: 95777
+    I20250614 07:42:15.527281 20865 model.cc:434] Observations: 590818
+    I20250614 07:42:15.527290 20865 model.cc:436] Mean track length: 6.168684
+    I20250614 07:42:15.527294 20865 model.cc:438] Mean observations per image: 2786.877358
+    I20250614 07:42:15.527184 20865 model.cc:429] Cameras: 1
+    I20250614 07:42:15.527271 20865 model.cc:430] Images: 212
+    I20250614 07:42:15.527276 20865 model.cc:431] Registered images: 212
+    I20250614 07:42:15.527279 20865 model.cc:433] Points: 95777
+    I20250614 07:42:15.527281 20865 model.cc:434] Observations: 590818
+    I20250614 07:42:15.527290 20865 model.cc:436] Mean track length: 6.168684
+    I20250614 07:42:15.527294 20865 model.cc:438] Mean observations per image: 2786.877358
+    I20250614 07:42:15.527302 20865 model.cc:441] Mean reprojection error: 0.757631px
+    I20250614 07:42:15.720209 20866 model.cc:429] Cameras: 1
+    I20250614 07:42:15.720209 20866 model.cc:429] Cameras: 1
+    I20250614 07:42:15.720288 20866 model.cc:430] Images: 212
+    I20250614 07:42:15.720209 20866 model.cc:429] Cameras: 1
+    I20250614 07:42:15.720288 20866 model.cc:430] Images: 212
+    I20250614 07:42:15.720292 20866 model.cc:431] Registered images: 212
+    I20250614 07:42:15.720209 20866 model.cc:429] Cameras: 1
+    I20250614 07:42:15.720288 20866 model.cc:430] Images: 212
+    I20250614 07:42:15.720292 20866 model.cc:431] Registered images: 212
+    I20250614 07:42:15.720295 20866 model.cc:433] Points: 95763
+    I20250614 07:42:15.720209 20866 model.cc:429] Cameras: 1
+    I20250614 07:42:15.720288 20866 model.cc:430] Images: 212
+    I20250614 07:42:15.720292 20866 model.cc:431] Registered images: 212
+    I20250614 07:42:15.720295 20866 model.cc:433] Points: 95763
+    I20250614 07:42:15.720297 20866 model.cc:434] Observations: 590881
+    I20250614 07:42:15.720209 20866 model.cc:429] Cameras: 1
+    I20250614 07:42:15.720288 20866 model.cc:430] Images: 212
+    I20250614 07:42:15.720292 20866 model.cc:431] Registered images: 212
+    I20250614 07:42:15.720295 20866 model.cc:433] Points: 95763
+    I20250614 07:42:15.720297 20866 model.cc:434] Observations: 590881
+    I20250614 07:42:15.720305 20866 model.cc:436] Mean track length: 6.170243
+    I20250614 07:42:15.720209 20866 model.cc:429] Cameras: 1
+    I20250614 07:42:15.720288 20866 model.cc:430] Images: 212
+    I20250614 07:42:15.720292 20866 model.cc:431] Registered images: 212
+    I20250614 07:42:15.720295 20866 model.cc:433] Points: 95763
+    I20250614 07:42:15.720297 20866 model.cc:434] Observations: 590881
+    I20250614 07:42:15.720305 20866 model.cc:436] Mean track length: 6.170243
+    I20250614 07:42:15.720319 20866 model.cc:438] Mean observations per image: 2787.174528
+    I20250614 07:42:15.720209 20866 model.cc:429] Cameras: 1
+    I20250614 07:42:15.720288 20866 model.cc:430] Images: 212
+    I20250614 07:42:15.720292 20866 model.cc:431] Registered images: 212
+    I20250614 07:42:15.720295 20866 model.cc:433] Points: 95763
+    I20250614 07:42:15.720297 20866 model.cc:434] Observations: 590881
+    I20250614 07:42:15.720305 20866 model.cc:436] Mean track length: 6.170243
+    I20250614 07:42:15.720319 20866 model.cc:438] Mean observations per image: 2787.174528
+    I20250614 07:42:15.720324 20866 model.cc:441] Mean reprojection error: 0.757790px
+    I20250614 07:42:15.910833 20867 model.cc:429] Cameras: 1
+    I20250614 07:42:15.910833 20867 model.cc:429] Cameras: 1
+    I20250614 07:42:15.910913 20867 model.cc:430] Images: 212
+    I20250614 07:42:15.910833 20867 model.cc:429] Cameras: 1
+    I20250614 07:42:15.910913 20867 model.cc:430] Images: 212
+    I20250614 07:42:15.910917 20867 model.cc:431] Registered images: 212
+    I20250614 07:42:15.910833 20867 model.cc:429] Cameras: 1
+    I20250614 07:42:15.910913 20867 model.cc:430] Images: 212
+    I20250614 07:42:15.910917 20867 model.cc:431] Registered images: 212
+    I20250614 07:42:15.910921 20867 model.cc:433] Points: 103068
+    I20250614 07:42:15.910833 20867 model.cc:429] Cameras: 1
+    I20250614 07:42:15.910913 20867 model.cc:430] Images: 212
+    I20250614 07:42:15.910917 20867 model.cc:431] Registered images: 212
+    I20250614 07:42:15.910921 20867 model.cc:433] Points: 103068
+    I20250614 07:42:15.910923 20867 model.cc:434] Observations: 642823
+    I20250614 07:42:15.910833 20867 model.cc:429] Cameras: 1
+    I20250614 07:42:15.910913 20867 model.cc:430] Images: 212
+    I20250614 07:42:15.910917 20867 model.cc:431] Registered images: 212
+    I20250614 07:42:15.910921 20867 model.cc:433] Points: 103068
+    I20250614 07:42:15.910923 20867 model.cc:434] Observations: 642823
+    I20250614 07:42:15.910933 20867 model.cc:436] Mean track length: 6.236882
+    I20250614 07:42:15.910833 20867 model.cc:429] Cameras: 1
+    I20250614 07:42:15.910913 20867 model.cc:430] Images: 212
+    I20250614 07:42:15.910917 20867 model.cc:431] Registered images: 212
+    I20250614 07:42:15.910921 20867 model.cc:433] Points: 103068
+    I20250614 07:42:15.910923 20867 model.cc:434] Observations: 642823
+    I20250614 07:42:15.910933 20867 model.cc:436] Mean track length: 6.236882
+    I20250614 07:42:15.910945 20867 model.cc:438] Mean observations per image: 3032.183962
+    I20250614 07:42:15.910833 20867 model.cc:429] Cameras: 1
+    I20250614 07:42:15.910913 20867 model.cc:430] Images: 212
+    I20250614 07:42:15.910917 20867 model.cc:431] Registered images: 212
+    I20250614 07:42:15.910921 20867 model.cc:433] Points: 103068
+    I20250614 07:42:15.910923 20867 model.cc:434] Observations: 642823
+    I20250614 07:42:15.910933 20867 model.cc:436] Mean track length: 6.236882
+    I20250614 07:42:15.910945 20867 model.cc:438] Mean observations per image: 3032.183962
+    I20250614 07:42:15.910951 20867 model.cc:441] Mean reprojection error: 0.735676px
+    I20250614 07:42:16.124279 20868 model.cc:429] Cameras: 1
+    I20250614 07:42:16.124279 20868 model.cc:429] Cameras: 1
+    I20250614 07:42:16.124362 20868 model.cc:430] Images: 238
+    I20250614 07:42:16.124279 20868 model.cc:429] Cameras: 1
+    I20250614 07:42:16.124362 20868 model.cc:430] Images: 238
+    I20250614 07:42:16.124367 20868 model.cc:431] Registered images: 238
+    I20250614 07:42:16.124279 20868 model.cc:429] Cameras: 1
+    I20250614 07:42:16.124362 20868 model.cc:430] Images: 238
+    I20250614 07:42:16.124367 20868 model.cc:431] Registered images: 238
+    I20250614 07:42:16.124369 20868 model.cc:433] Points: 110503
+    I20250614 07:42:16.124279 20868 model.cc:429] Cameras: 1
+    I20250614 07:42:16.124362 20868 model.cc:430] Images: 238
+    I20250614 07:42:16.124367 20868 model.cc:431] Registered images: 238
+    I20250614 07:42:16.124369 20868 model.cc:433] Points: 110503
+    I20250614 07:42:16.124372 20868 model.cc:434] Observations: 709267
+    I20250614 07:42:16.124279 20868 model.cc:429] Cameras: 1
+    I20250614 07:42:16.124362 20868 model.cc:430] Images: 238
+    I20250614 07:42:16.124367 20868 model.cc:431] Registered images: 238
+    I20250614 07:42:16.124369 20868 model.cc:433] Points: 110503
+    I20250614 07:42:16.124372 20868 model.cc:434] Observations: 709267
+    I20250614 07:42:16.124382 20868 model.cc:436] Mean track length: 6.418532
+    I20250614 07:42:16.124279 20868 model.cc:429] Cameras: 1
+    I20250614 07:42:16.124362 20868 model.cc:430] Images: 238
+    I20250614 07:42:16.124367 20868 model.cc:431] Registered images: 238
+    I20250614 07:42:16.124369 20868 model.cc:433] Points: 110503
+    I20250614 07:42:16.124372 20868 model.cc:434] Observations: 709267
+    I20250614 07:42:16.124382 20868 model.cc:436] Mean track length: 6.418532
+    I20250614 07:42:16.124387 20868 model.cc:438] Mean observations per image: 2980.113445
+    I20250614 07:42:16.124279 20868 model.cc:429] Cameras: 1
+    I20250614 07:42:16.124362 20868 model.cc:430] Images: 238
+    I20250614 07:42:16.124367 20868 model.cc:431] Registered images: 238
+    I20250614 07:42:16.124369 20868 model.cc:433] Points: 110503
+    I20250614 07:42:16.124372 20868 model.cc:434] Observations: 709267
+    I20250614 07:42:16.124382 20868 model.cc:436] Mean track length: 6.418532
+    I20250614 07:42:16.124387 20868 model.cc:438] Mean observations per image: 2980.113445
+    I20250614 07:42:16.124398 20868 model.cc:441] Mean reprojection error: 0.764388px
+    I20250614 07:42:16.352660 20869 model.cc:429] Cameras: 1
+    I20250614 07:42:16.352660 20869 model.cc:429] Cameras: 1
+    I20250614 07:42:16.352739 20869 model.cc:430] Images: 238
+    I20250614 07:42:16.352660 20869 model.cc:429] Cameras: 1
+    I20250614 07:42:16.352739 20869 model.cc:430] Images: 238
+    I20250614 07:42:16.352744 20869 model.cc:431] Registered images: 238
+    I20250614 07:42:16.352660 20869 model.cc:429] Cameras: 1
+    I20250614 07:42:16.352739 20869 model.cc:430] Images: 238
+    I20250614 07:42:16.352744 20869 model.cc:431] Registered images: 238
+    I20250614 07:42:16.352746 20869 model.cc:433] Points: 118926
+    I20250614 07:42:16.352660 20869 model.cc:429] Cameras: 1
+    I20250614 07:42:16.352739 20869 model.cc:430] Images: 238
+    I20250614 07:42:16.352744 20869 model.cc:431] Registered images: 238
+    I20250614 07:42:16.352746 20869 model.cc:433] Points: 118926
+    I20250614 07:42:16.352748 20869 model.cc:434] Observations: 773781
+    I20250614 07:42:16.352660 20869 model.cc:429] Cameras: 1
+    I20250614 07:42:16.352739 20869 model.cc:430] Images: 238
+    I20250614 07:42:16.352744 20869 model.cc:431] Registered images: 238
+    I20250614 07:42:16.352746 20869 model.cc:433] Points: 118926
+    I20250614 07:42:16.352748 20869 model.cc:434] Observations: 773781
+    I20250614 07:42:16.352757 20869 model.cc:436] Mean track length: 6.506407
+    I20250614 07:42:16.352660 20869 model.cc:429] Cameras: 1
+    I20250614 07:42:16.352739 20869 model.cc:430] Images: 238
+    I20250614 07:42:16.352744 20869 model.cc:431] Registered images: 238
+    I20250614 07:42:16.352746 20869 model.cc:433] Points: 118926
+    I20250614 07:42:16.352748 20869 model.cc:434] Observations: 773781
+    I20250614 07:42:16.352757 20869 model.cc:436] Mean track length: 6.506407
+    I20250614 07:42:16.352771 20869 model.cc:438] Mean observations per image: 3251.180672
+    I20250614 07:42:16.352660 20869 model.cc:429] Cameras: 1
+    I20250614 07:42:16.352739 20869 model.cc:430] Images: 238
+    I20250614 07:42:16.352744 20869 model.cc:431] Registered images: 238
+    I20250614 07:42:16.352746 20869 model.cc:433] Points: 118926
+    I20250614 07:42:16.352748 20869 model.cc:434] Observations: 773781
+    I20250614 07:42:16.352757 20869 model.cc:436] Mean track length: 6.506407
+    I20250614 07:42:16.352771 20869 model.cc:438] Mean observations per image: 3251.180672
+    I20250614 07:42:16.352777 20869 model.cc:441] Mean reprojection error: 0.743559px</code></pre>
+</div>
+<div class="cell-output cell-output-display" data-execution_count="3">
+<div>
+
+
+<table class="dataframe caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">Scenario</th>
+<th data-quarto-table-cell-role="th">Cameras</th>
+<th data-quarto-table-cell-role="th">Images</th>
+<th data-quarto-table-cell-role="th">Registered Images</th>
+<th data-quarto-table-cell-role="th">Points3D</th>
+<th data-quarto-table-cell-role="th">Observations</th>
+<th data-quarto-table-cell-role="th">Mean Track Length</th>
+<th data-quarto-table-cell-role="th">Mean Observations per Image</th>
+<th data-quarto-table-cell-role="th">Mean Reprojection Error</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>DJI_0145-FPS-1.20-greyscale</td>
+<td>1</td>
+<td>183</td>
+<td>183</td>
+<td>68778</td>
+<td>417797</td>
+<td>6.074573</td>
+<td>2283.043716</td>
+<td>0.707498</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>DJI_0145-FPS-1.20-original</td>
+<td>1</td>
+<td>183</td>
+<td>183</td>
+<td>83212</td>
+<td>534165</td>
+<td>6.419327</td>
+<td>2918.934426</td>
+<td>0.680858</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>DJI_0145-FPS-1.40-greyscale</td>
+<td>1</td>
+<td>214</td>
+<td>214</td>
+<td>82934</td>
+<td>532169</td>
+<td>6.416777</td>
+<td>2486.771028</td>
+<td>0.716086</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>DJI_0145-FPS-1.40-original</td>
+<td>1</td>
+<td>214</td>
+<td>214</td>
+<td>99325</td>
+<td>676258</td>
+<td>6.808538</td>
+<td>3160.084112</td>
+<td>0.690331</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>DJI_0145-FPS-1.60-filtered</td>
+<td>1</td>
+<td>244</td>
+<td>244</td>
+<td>95786</td>
+<td>644085</td>
+<td>6.724208</td>
+<td>2639.692623</td>
+<td>0.722341</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">5</td>
+<td>DJI_0145-FPS-1.60-greyscale</td>
+<td>1</td>
+<td>244</td>
+<td>244</td>
+<td>96103</td>
+<td>647131</td>
+<td>6.733723</td>
+<td>2652.176230</td>
+<td>0.722750</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">6</td>
+<td>DJI_0145-FPS-1.60-original</td>
+<td>1</td>
+<td>244</td>
+<td>244</td>
+<td>113935</td>
+<td>818285</td>
+<td>7.182034</td>
+<td>3353.627049</td>
+<td>0.696857</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">7</td>
+<td>DJI_0145-FPS-1.80-greyscale</td>
+<td>1</td>
+<td>275</td>
+<td>275</td>
+<td>109113</td>
+<td>770094</td>
+<td>7.057766</td>
+<td>2800.341818</td>
+<td>0.725678</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">8</td>
+<td>DJI_0145-FPS-1.80-original</td>
+<td>1</td>
+<td>275</td>
+<td>275</td>
+<td>129391</td>
+<td>972925</td>
+<td>7.519263</td>
+<td>3537.909091</td>
+<td>0.700740</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">9</td>
+<td>DJI_0146-FPS-1.20-greyscale</td>
+<td>1</td>
+<td>218</td>
+<td>218</td>
+<td>77096</td>
+<td>777578</td>
+<td>10.085841</td>
+<td>3566.871560</td>
+<td>0.890994</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">10</td>
+<td>DJI_0146-FPS-1.20-original</td>
+<td>1</td>
+<td>218</td>
+<td>218</td>
+<td>78454</td>
+<td>857696</td>
+<td>10.932470</td>
+<td>3934.385321</td>
+<td>0.905284</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">11</td>
+<td>DJI_0146-FPS-1.40-greyscale</td>
+<td>1</td>
+<td>255</td>
+<td>255</td>
+<td>86245</td>
+<td>927496</td>
+<td>10.754200</td>
+<td>3637.239216</td>
+<td>0.894097</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">12</td>
+<td>DJI_0146-FPS-1.40-original</td>
+<td>1</td>
+<td>255</td>
+<td>255</td>
+<td>92138</td>
+<td>1096166</td>
+<td>11.897002</td>
+<td>4298.690196</td>
+<td>0.907166</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">13</td>
+<td>DJI_0146-FPS-1.60-filtered</td>
+<td>1</td>
+<td>291</td>
+<td>291</td>
+<td>98548</td>
+<td>1127732</td>
+<td>11.443479</td>
+<td>3875.367698</td>
+<td>0.895558</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">14</td>
+<td>DJI_0146-FPS-1.60-greyscale</td>
+<td>1</td>
+<td>291</td>
+<td>291</td>
+<td>97974</td>
+<td>1115188</td>
+<td>11.382489</td>
+<td>3832.261168</td>
+<td>0.895136</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">15</td>
+<td>DJI_0146-FPS-1.60-original</td>
+<td>1</td>
+<td>291</td>
+<td>291</td>
+<td>99912</td>
+<td>1224317</td>
+<td>12.253953</td>
+<td>4207.274914</td>
+<td>0.900470</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">16</td>
+<td>DJI_0146-FPS-1.80-greyscale</td>
+<td>1</td>
+<td>327</td>
+<td>327</td>
+<td>107488</td>
+<td>1255582</td>
+<td>11.681136</td>
+<td>3839.700306</td>
+<td>0.893862</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">17</td>
+<td>DJI_0146-FPS-1.80-original</td>
+<td>1</td>
+<td>327</td>
+<td>327</td>
+<td>109061</td>
+<td>1394880</td>
+<td>12.789907</td>
+<td>4265.688073</td>
+<td>0.904425</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">18</td>
+<td>DJI_0150-FPS-1.20-greyscale</td>
+<td>1</td>
+<td>159</td>
+<td>159</td>
+<td>65950</td>
+<td>368685</td>
+<td>5.590371</td>
+<td>2318.773585</td>
+<td>0.747429</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">19</td>
+<td>DJI_0150-FPS-1.20-original</td>
+<td>1</td>
+<td>159</td>
+<td>159</td>
+<td>70964</td>
+<td>400297</td>
+<td>5.640846</td>
+<td>2517.591195</td>
+<td>0.725801</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">20</td>
+<td>DJI_0150-FPS-1.40-greyscale</td>
+<td>1</td>
+<td>185</td>
+<td>185</td>
+<td>80547</td>
+<td>475549</td>
+<td>5.903994</td>
+<td>2570.535135</td>
+<td>0.755927</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">21</td>
+<td>DJI_0150-FPS-1.40-original</td>
+<td>1</td>
+<td>185</td>
+<td>185</td>
+<td>87274</td>
+<td>517855</td>
+<td>5.933669</td>
+<td>2799.216216</td>
+<td>0.731209</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">22</td>
+<td>DJI_0150-FPS-1.60-filtered</td>
+<td>1</td>
+<td>212</td>
+<td>212</td>
+<td>95777</td>
+<td>590818</td>
+<td>6.168684</td>
+<td>2786.877358</td>
+<td>0.757631</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">23</td>
+<td>DJI_0150-FPS-1.60-greyscale</td>
+<td>1</td>
+<td>212</td>
+<td>212</td>
+<td>95763</td>
+<td>590881</td>
+<td>6.170243</td>
+<td>2787.174528</td>
+<td>0.757790</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">24</td>
+<td>DJI_0150-FPS-1.60-original</td>
+<td>1</td>
+<td>212</td>
+<td>212</td>
+<td>103068</td>
+<td>642823</td>
+<td>6.236882</td>
+<td>3032.183962</td>
+<td>0.735676</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">25</td>
+<td>DJI_0150-FPS-1.80-greyscale</td>
+<td>1</td>
+<td>238</td>
+<td>238</td>
+<td>110503</td>
+<td>709267</td>
+<td>6.418532</td>
+<td>2980.113445</td>
+<td>0.764388</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">26</td>
+<td>DJI_0150-FPS-1.80-original</td>
+<td>1</td>
+<td>238</td>
+<td>238</td>
+<td>118926</td>
+<td>773781</td>
+<td>6.506407</td>
+<td>3251.180672</td>
+<td>0.743559</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>Great — this is a rich dataset for analysis. Let’s compare the impact of <strong>FPS</strong> and <strong>greyscale vs original</strong> on model quality across all scenarios.</p>
+<hr>
+<section id="key-metrics-to-evaluate" class="level2">
+<h2 class="anchored" data-anchor-id="key-metrics-to-evaluate">📊 Key Metrics to Evaluate</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 30%">
+<col style="width: 34%">
+<col style="width: 34%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Metric</th>
+<th>Meaning</th>
+<th>Goal</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Points3D</code></td>
+<td>Number of 3D points reconstructed</td>
+<td>Higher is better (more detail)</td>
+</tr>
+<tr class="even">
+<td><code>Mean Reprojection Error</code></td>
+<td>Average pixel reprojection error</td>
+<td>Lower is better (better accuracy)</td>
+</tr>
+<tr class="odd">
+<td><code>Mean Track Length</code></td>
+<td>Avg number of frames per 3D point</td>
+<td>Higher is better (robustness)</td>
+</tr>
+<tr class="even">
+<td><code>Mean Observations per Image</code></td>
+<td>Avg features per frame</td>
+<td>Higher is better (frame quality)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="observations" class="level2">
+<h2 class="anchored" data-anchor-id="observations">🧠 Observations</h2>
+<section id="original-greyscale-consistently" class="level3">
+<h3 class="anchored" data-anchor-id="original-greyscale-consistently">✅ Original &gt; Greyscale — consistently</h3>
+<p>Across all matching FPS, the <strong>original (RGB)</strong> images produce:</p>
+<ul>
+<li><strong>More 3D points</strong></li>
+<li><strong>Longer track lengths</strong></li>
+<li><strong>More observations per image</strong></li>
+<li><strong>Lower or comparable reprojection error</strong></li>
+</ul>
+<section id="examples" class="level4">
+<h4 class="anchored" data-anchor-id="examples">Examples:</h4>
+<p><strong>DJI_0145 at FPS=1.80</strong></p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Points3D</th>
+<th>Mean Reproj. Err.</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Greyscale</td>
+<td>109,113</td>
+<td>0.726 px</td>
+</tr>
+<tr class="even">
+<td>Original</td>
+<td>129,391</td>
+<td>0.701 px ✅</td>
+</tr>
+</tbody>
+</table>
+<p><strong>DJI_0150 at FPS=1.60</strong></p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Points3D</th>
+<th>Mean Reproj. Err.</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Greyscale</td>
+<td>95,763</td>
+<td>0.758 px</td>
+</tr>
+<tr class="even">
+<td>Original</td>
+<td>103,068</td>
+<td>0.736 px ✅</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+</section>
+</section>
+<section id="diminishing-returns-with-fps" class="level2">
+<h2 class="anchored" data-anchor-id="diminishing-returns-with-fps">📈 Diminishing Returns with FPS</h2>
+<ul>
+<li>As FPS increases, <code>Points3D</code> continues to rise but <strong>more slowly</strong></li>
+<li><code>Mean Reprojection Error</code> <strong>slightly worsens</strong> above FPS 1.60 — may indicate over-sampling / redundant views</li>
+</ul>
+<hr>
+</section>
+<section id="best-fps-sweet-spot" class="level2">
+<h2 class="anchored" data-anchor-id="best-fps-sweet-spot">✅ Best FPS Sweet Spot?</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 18%">
+<col style="width: 81%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>FPS</th>
+<th>Gains Level Off?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>1.40–1.60</strong> ✅</td>
+<td>Still good gains, good accuracy</td>
+</tr>
+<tr class="even">
+<td><strong>1.80</strong> ⚠️</td>
+<td>Still better detail, but diminishing returns + slightly worse error</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="best-overall-model" class="level2">
+<h2 class="anchored" data-anchor-id="best-overall-model">✅ Best Overall Model?</h2>
+<p>Looking at all metrics, these 3 are <strong>excellent</strong> candidates:</p>
+<section id="dji_0145-fps-1.60-original" class="level3">
+<h3 class="anchored" data-anchor-id="dji_0145-fps-1.60-original">1. <strong>DJI_0145-FPS-1.60-original</strong></h3>
+<ul>
+<li><code>Points3D</code>: <strong>113,935</strong></li>
+<li><code>Reproj Err</code>: <strong>0.696 px</strong></li>
+<li>High track length (7.18), high observations per image</li>
+</ul>
+</section>
+<section id="dji_0146-fps-1.60-original" class="level3">
+<h3 class="anchored" data-anchor-id="dji_0146-fps-1.60-original">2. <strong>DJI_0146-FPS-1.60-original</strong></h3>
+<ul>
+<li><code>Points3D</code>: <strong>99,912</strong></li>
+<li><code>Reproj Err</code>: <strong>0.900 px</strong> (higher, but this dataset always has higher error)</li>
+<li>Very long track lengths (12.25)</li>
+</ul>
+</section>
+<section id="dji_0150-fps-1.60-original" class="level3">
+<h3 class="anchored" data-anchor-id="dji_0150-fps-1.60-original">3. <strong>DJI_0150-FPS-1.60-original</strong></h3>
+<ul>
+<li><code>Points3D</code>: <strong>103,068</strong></li>
+<li><code>Reproj Err</code>: <strong>0.736 px</strong></li>
+<li>Solid balance between size and error</li>
+</ul>
+<hr>
+</section>
+</section>
+<section id="not-recommended" class="level2">
+<h2 class="anchored" data-anchor-id="not-recommended">🚫 Not Recommended</h2>
+<ul>
+<li><strong>Greyscale</strong> models — consistently underperform originals</li>
+<li><strong>FPS &gt; 1.60</strong> — little gain, slightly higher reprojection error</li>
+</ul>
+<hr>
+</section>
+<section id="recommendation" class="level2">
+<h2 class="anchored" data-anchor-id="recommendation">✅ Recommendation</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Metric</th>
+<th>Best Choice</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Image Type</td>
+<td><strong>Original (RGB)</strong></td>
+</tr>
+<tr class="even">
+<td>FPS</td>
+<td><strong>1.60</strong> (best balance)</td>
+</tr>
+<tr class="odd">
+<td>Use Greyscale?</td>
+<td>❌ No — lower quality</td>
+</tr>
+<tr class="even">
+<td>Use 1.80 FPS?</td>
+<td>🤔 Only if detail &gt; error</td>
+</tr>
+<tr class="odd">
+<td>Export This Set</td>
+<td>Yes — you’re ready 🚀</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="detailed-look-at-fps1.60" class="level1">
+<h1>Detailed look at FPS=1.60</h1>
+<p>Great — let’s now <strong>compare the three filtering strategies at FPS = 1.60</strong> across all three tracks (<code>DJI_0145</code>, <code>DJI_0146</code>, <code>DJI_0150</code>) using key quality metrics:</p>
+<hr>
+<section id="summary-fps-1.60-comparison" class="level3">
+<h3 class="anchored" data-anchor-id="summary-fps-1.60-comparison">📊 Summary: FPS = 1.60 Comparison</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 18%">
+<col style="width: 13%">
+<col style="width: 11%">
+<col style="width: 24%">
+<col style="width: 13%">
+<col style="width: 18%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Track</th>
+<th>Strategy</th>
+<th>Points3D</th>
+<th>Mean Track Length</th>
+<th>Obs/Image</th>
+<th>Reproj. Error</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>DJI_0145</strong></td>
+<td>Greyscale</td>
+<td>96,103</td>
+<td>6.73</td>
+<td>2,652</td>
+<td>0.7228</td>
+</tr>
+<tr class="even">
+<td></td>
+<td>Filtered</td>
+<td>95,786</td>
+<td>6.72</td>
+<td>2,639</td>
+<td>0.7223 ✅</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td>Original</td>
+<td>113,935</td>
+<td>7.18 ✅</td>
+<td>3,353 ✅</td>
+<td>0.6969 ✅</td>
+</tr>
+<tr class="even">
+<td><strong>DJI_0146</strong></td>
+<td>Greyscale</td>
+<td>97,974</td>
+<td>11.38</td>
+<td>3,832</td>
+<td>0.8951 ✅</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td>Filtered</td>
+<td>98,548</td>
+<td>11.44</td>
+<td>3,875</td>
+<td>0.8956</td>
+</tr>
+<tr class="even">
+<td></td>
+<td>Original</td>
+<td>99,912</td>
+<td>12.25 ✅</td>
+<td>4,207 ✅</td>
+<td>0.9005</td>
+</tr>
+<tr class="odd">
+<td><strong>DJI_0150</strong></td>
+<td>Greyscale</td>
+<td>95,763</td>
+<td>6.17</td>
+<td>2,787</td>
+<td>0.7578</td>
+</tr>
+<tr class="even">
+<td></td>
+<td>Filtered</td>
+<td>95,777</td>
+<td>6.17</td>
+<td>2,786 ✅</td>
+<td>0.7576 ✅</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td>Original</td>
+<td>103,068</td>
+<td>6.24 ✅</td>
+<td>3,032 ✅</td>
+<td>0.7357 ✅</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="evaluation-by-track" class="level3">
+<h3 class="anchored" data-anchor-id="evaluation-by-track">✅ Evaluation by Track</h3>
+<section id="dji_0145" class="level4">
+<h4 class="anchored" data-anchor-id="dji_0145"><strong>DJI_0145</strong></h4>
+<ul>
+<li><strong>Original</strong> wins in every category: most points, longest tracks, best error.</li>
+</ul>
+</section>
+<section id="dji_0146" class="level4">
+<h4 class="anchored" data-anchor-id="dji_0146"><strong>DJI_0146</strong></h4>
+<ul>
+<li><strong>Greyscale</strong> has the <strong>lowest reprojection error</strong>, but slightly fewer features.</li>
+<li><strong>Original</strong> wins on track length and observations per image.</li>
+<li><strong>Filtered</strong> is a good middle-ground, nearly matching both.</li>
+</ul>
+</section>
+<section id="dji_0150" class="level4">
+<h4 class="anchored" data-anchor-id="dji_0150"><strong>DJI_0150</strong></h4>
+<ul>
+<li><strong>Original</strong> again provides most structure and lowest reprojection error.</li>
+<li><strong>Filtered</strong> and <strong>greyscale</strong> are nearly tied but inferior.</li>
+</ul>
+<hr>
+</section>
+</section>
+<section id="overall-recommendation-at-fps-1.60" class="level3">
+<h3 class="anchored" data-anchor-id="overall-recommendation-at-fps-1.60">🏁 Overall Recommendation at FPS = 1.60</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 14%">
+<col style="width: 85%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Strategy</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Original</strong> ✅</td>
+<td>Best balance of feature count, track length, and reprojection error.</td>
+</tr>
+<tr class="even">
+<td><strong>Filtered</strong> ⚖️</td>
+<td>Slightly fewer points and lower memory, good if you’re trimming for performance.</td>
+</tr>
+<tr class="odd">
+<td><strong>Greyscale</strong> ❌</td>
+<td>Only helpful in rare cases (e.g., DJI_0146 reprojection error). Otherwise lower quality.</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+        const codeEl = trigger.previousElementSibling.cloneNode(true);
+        for (const childEl of codeEl.children) {
+          if (isCodeAnnotation(childEl)) {
+            childEl.remove();
+          }
+        }
+        return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

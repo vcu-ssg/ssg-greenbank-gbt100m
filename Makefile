@@ -36,7 +36,7 @@ ENGINE = INCREMENTAL
 extract-frames.title = Extract frames from one or more videos.
 
 video-roots := DJI_0145 DJI_0146 DJI_0150
-fps-roots := 1.20 1.00 0.80 0.60 0.40
+fps-roots := 1.20 1.40 1.60 1.80
 
 video-folder = data/videos
 frame-folder = data/frames
@@ -102,8 +102,6 @@ colmap-pipeline-original : $(colmap-original-targets)
 
 
 
-
-
 openmvg-openmvs-pipeline:
 	poetry run python scripts/cli.py run-openmvg-openmvs \
 		--sfm-engine=$(ENGINE) \
@@ -149,3 +147,9 @@ build-colmap:
 
 build-colmap-cuda:
 	docker compose -f ./docker/docker-compose.yml build colmap-cuda
+
+build-gsplat:
+	docker compose -f ./docker/docker-compose.yml build gsplat
+
+shell-gsplat:
+	docker compose -f ./docker/docker-compose.yml run --rm gsplat bash
