@@ -15,7 +15,7 @@ def host_to_container_path(host_path: str) -> str:
     return os.path.join("/data", rel_path)
 
 
-def run_gsplat_training(scene, frames_dir, sparse_dir, output_dir):
+def run_gsplat2_training(scene, frames_dir, sparse_dir, output_dir):
     logger.info(f"🟢 Running gsplat for {scene}")
     logger.info(f"📸 Host Images      : {frames_dir}")
     logger.info(f"📈 Host Sparse model: {sparse_dir}")
@@ -38,11 +38,29 @@ def run_gsplat_training(scene, frames_dir, sparse_dir, output_dir):
     logger.info(f"📈 Container Sparse model: {sparse_container}")
     logger.info(f"💾 Container Output path : {output_container}")
 
+    model_container = os.path.join(sparse_container, "sparse", "0")
+
+# https://medium.com/data-science/turn-yourself-into-a-3d-gaussian-splat-3a2bc59a770f
+# resolution=1                      # default 1
+# sh_degree=3                       # default 3
+# position_lr_init=0.00016          # default = 0.00016, large scale -> 0.000016
+# scaling_lr=0.005                  # default = 0.005, large scale -> 0.001
+# iterations=30000                  # default 30000
+# densify_from_iter=500             # default 500
+# densify_until_iter=15000          # default 15000
+# test_iterations="7000 30000"      # default 7000 30000
+# save_iterations="7000 30000"      # default 7000 30000
+# data_device=cpu
+
     cmd = [
-        "gsplat",
+        "gsplat2",
         "python", "train.py",
-        "--source_path", sparse_container,
-        "--model_path", output_container,
+        "--data_device=cpu",
+        "--resolution=8",
+        "--sh_degree=1",        
+        "--source_path", sparse_container,     # ✅ this is the COLMAP project root
+        "--model_path", model_container,       # ✅ full path to sparse/0
         "--images", frames_container
     ]
-    run_subprocess(cmd, f"gsplat [{scene}]")
+
+    run_subprocess(cmd, f"gsplat2 [{scene}]")

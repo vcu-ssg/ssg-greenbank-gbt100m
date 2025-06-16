@@ -16,10 +16,12 @@ def cli():
 @click.option("--threads", type=int, default=8, help="FFMPEG threads to use")
 @click.option("--quality", type=int, default=2, help="JPG quality 1/31")
 @click.option("--tag", default="tag", help="filename tag")
-def extract_frames(video_path, output_dir,fps,skip,capture,threads,quality,tag):
+@click.option("--format", default="png", help="Output file format (png/jpg)")
+@click.option("--max_width", default="1600", help="max image width")
+def extract_frames(video_path, output_dir,fps,skip,capture,threads,quality,tag,format,max_width):
     """Extract frames from video"""
     extract_frames_from_file(video_path, output_dir, fps=fps,skip_seconds=str(skip),
-        threads=threads,quality=quality,capture_seconds=capture,tag=tag)
+        threads=threads,quality=quality,capture_seconds=capture,tag=tag,format=format, max_width=max_width)
 
 
 @cli.command()
@@ -115,15 +117,17 @@ def run_colmap_pipeline_cli(image_path, colmap_output_folder):
     run_colmap_pipeline(image_path, colmap_output_folder)
 
 
+
 @cli.command()
 @click.option('--scene', required=True, help='Scene name, e.g. DJI_0145-FPS-1.60-original')
 @click.option('--frames-dir', required=True, type=click.Path(), help='Path to input images')
 @click.option('--sparse-dir', required=True, type=click.Path(), help='Path to sparse COLMAP model (sparse/0)')
 @click.option('--output-dir', required=True, type=click.Path(), help='Output directory for gsplat results')
-def gsplat(scene, frames_dir, sparse_dir, output_dir):
+def gsplat2(scene, frames_dir, sparse_dir, output_dir):
     """Run Gaussian Splatting training for a specific scene with provided paths."""
-    gsplat_pipeline.run_gsplat_training(scene, frames_dir, sparse_dir, output_dir)
+    gsplat_pipeline.run_gsplat2_training(scene, frames_dir, sparse_dir, output_dir)
 
 
 if __name__ == "__main__":
     cli()
+

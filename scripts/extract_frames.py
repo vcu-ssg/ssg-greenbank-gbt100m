@@ -76,13 +76,14 @@ def add_camera_model_to_images(file_list, camera_model):
 
 
 
-def extract_frames_from_file(video_path, output_dir, fps=1.0, skip_seconds = 5, threads=8, quality=2, capture_seconds=None, tag="tag"):
+def extract_frames_from_file(video_path, output_dir, fps=1.0, skip_seconds = 5, threads=8, quality=2, capture_seconds=None, 
+                             format="jpg",tag="tag",max_width=1600):
     os.makedirs(output_dir, exist_ok=True)
     """ extract frames from file """
     
     video_name = Path(video_path).stem
-    output_template = os.path.join(output_dir, f"{video_name}-{fps:4.2f}-{tag}-%05d.jpg")
-    video_mask = f"{video_name}-{fps:4.2f}-{tag}-*.jpg"
+    output_template = os.path.join(output_dir, f"{video_name}-{fps:4.2f}-{tag}-%05d.{format}")
+    video_mask = f"{video_name}-{fps:4.2f}-{tag}-*.{format}"
     
     # Step 1: Record existing files before extraction
     existing_files = set(Path(output_dir).glob(video_mask))
@@ -97,11 +98,14 @@ def extract_frames_from_file(video_path, output_dir, fps=1.0, skip_seconds = 5, 
         cmd.append("-t")
         cmd.append(str(capture_seconds))
     
+    if format=="jpg":
+        cmd.append(f"-q:v {str(quality)}")
+    else:
+        pass
     cmd.extend( [
         "-ss", str(skip_seconds),
         "-i", video_path,
-        "-vf", f"fps={fps},format=yuv420p",
-        "-q:v", str(quality),
+        "-vf", f"fps={fps},format=yuv420p,scale='min({max_width},iw):-1'",
         output_template ] )
     
     print(f"Running: {' '.join(cmd)}")

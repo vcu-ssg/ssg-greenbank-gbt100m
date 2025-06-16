@@ -117,7 +117,7 @@ def run_colmap_pipeline(image_path, colmap_output_folder):
     ply_output_path_host = os.path.join(sparse_folder, "0.ply")
 
     # 4️⃣ Run pipeline steps with CONTAINER paths
-    run_colmap_feature_extractor(image_path_in_container, db_path_in_container)
+    run_colmap_feature_extractor2(image_path_in_container, db_path_in_container)
     run_colmap_sequential_matcher(db_path_in_container)
     run_colmap_mapper(db_path_in_container, image_path_in_container, sparse_folder_in_container)
 

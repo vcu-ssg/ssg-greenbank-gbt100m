@@ -36,12 +36,12 @@ ENGINE = INCREMENTAL
 extract-frames.title = Extract frames from one or more videos.
 
 video-roots := DJI_0145 DJI_0146 DJI_0150
-fps-roots := 1.20 1.40 1.60 1.80
+fps-roots := 0.20 0.40 0.60 0.80 1.00 1.20 1.40 1.60 1.80
 
 video-folder = data/videos
 frame-folder = data/frames
 poetry-base = poetry run python scripts/cli.py
-extract-options = --threads=16 --quality=2
+extract-options = --threads=16 --quality=2 --max_width=600 --format=png
 
 DJI_0145.skip = 20
 DJI_0146.skip = 60
@@ -153,3 +153,33 @@ build-gsplat:
 
 shell-gsplat:
 	docker compose -f ./docker/docker-compose.yml run --rm gsplat bash
+
+shell-gsplat2:
+	docker compose -f ./docker/docker-compose.yml run --rm gsplat2 bash
+
+
+.PHONY: rebuild-gsplat2
+
+
+build-gsplat2:
+	@echo "🐳 Rebuilding Docker image using docker-compose in ./docker..."
+	docker compose -f ./docker/docker-compose.yml build gsplat2
+	@echo "✅ Done: gsplat2 rebuilt with fresh environment and SM_90 support"
+
+rebuild-gsplat2:
+	@echo "🧹 Pruning Docker builder cache and old gsplat2 image..."
+	docker builder prune --all --force
+	-docker rmi -f gsplat2 || true
+	make build-gsplat2
+
+cuda-test:
+	docker compose -f ./docker/docker-compose.yml run --rm gsplat2 bash -c \
+		'echo $$TORCH_CUDA_ARCH_LIST && python -c "import torch; print(torch.version.cuda, torch.cuda.get_device_properties(0))"'
+
+
+test: data/colmap-tuning/DJI_0150-FPS-0.60-original
+	poetry run python scripts/cli.py gsplat2 \
+	--scene=DJI_0150-FPS-0.60-original \
+	--frames-dir=data/frames/DJI_0150/FPS-0.60-original \
+	--sparse-dir=data/colmap-tuning/DJI_0150-FPS-0.60-original \
+	--output-dir=data/gsplat/DJI_0150-FPS-0.60-original
