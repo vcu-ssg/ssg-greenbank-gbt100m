@@ -82,37 +82,42 @@ def extract_frames_from_file(video_path, output_dir, fps=1.0, skip_seconds = 5, 
     """ extract frames from file """
     
     video_name = Path(video_path).stem
-    output_template = os.path.join(output_dir, f"{video_name}-{fps:4.2f}-{tag}-%05d.{format}")
-    video_mask = f"{video_name}-{fps:4.2f}-{tag}-*.{format}"
+    output_template = os.path.join(output_dir, f"{tag}_%05d.{format}")
+    file_mask = f"{tag}_*.{format}"
     
     # Step 1: Record existing files before extraction
-    existing_files = set(Path(output_dir).glob(video_mask))
+    existing_files = set(Path(output_dir).glob(file_mask))
     existing_files = ()
 
     # Step 2: Run ffmpeg to extract frames
     cmd = [
         "ffmpeg",
-        "-threads", str(threads)
+        "-threads", str(threads),
+#        "-noautorotate",
         ]
     if capture_seconds:
         cmd.append("-t")
         cmd.append(str(capture_seconds))
-    
-    if format=="jpg":
-        cmd.append(f"-q:v {str(quality)}")
-    else:
-        pass
+       
     cmd.extend( [
         "-ss", str(skip_seconds),
-        "-i", video_path,
-        "-vf", f"fps={fps},format=yuv420p,scale='min({max_width},iw):-1'",
-        output_template ] )
+        "-i", video_path ] )
+               
+    if format=="jpg":
+        cmd.extend([f"-q:v", str(quality)] )
+    else:
+        pass
+
+    cmd.extend(["-vf", f"fps={fps},format=yuv420p,scale='if(gt(iw,ih),min({max_width},iw),-2)':'if(gt(ih,iw),min({max_width},ih),-2)'" ])
+                      
+    cmd.append( output_template )
+    
     
     print(f"Running: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
 
     # Step 3: Identify newly created files
-    all_files = set(Path(output_dir).glob(video_mask))
+    all_files = set(Path(output_dir).glob(file_mask))
     #new_files = sorted(list(all_files - existing_files))
     new_files = all_files
 
@@ -126,7 +131,7 @@ def extract_frames_from_folder(video_dir, output_dir, fps):
         print(f"\n=== Extracting frames from {video_file} ===")
         extract_frames_from_file(str(video_file), output_dir, fps)
         
-        
+
 def process_image_with_convert(
     file_name,
     output_folder,
@@ -147,17 +152,11 @@ def process_image_with_convert(
     img_name = os.path.basename(file_name)
     output_path = os.path.join(output_folder, img_name)
 
+    # DJI_0150-filtered_jpg_0.20_800_00001.png
+    
+    part1, part2 = img_name.rsplit("_",1)
 
-    # Split by '-'
-    parts = img_name.split("-")
-
-    # Defensive check: ensure there are at least 4 parts
-    if len(parts) >= 4:
-        parts[2] = tag  # replace 3rd field (index 2)
-        img_name = "-".join(parts)
-    else:
-        raise ValueError(f"Filename format not as expected: {img_name}")
-
+    img_name = "_".join([tag,part2])
     output_path = os.path.join(output_folder, img_name)
 
     cmd = [
@@ -196,11 +195,13 @@ def process_folder_with_convert(
 ):
     """Process all .jpg files in input_folder using process_image_with_convert."""
 
+    parts = tag.split("-",1)
+    parts = parts[1].split("_",4)
     # Glob all jpg files in input_folder
-    file_list = sorted(glob.glob(os.path.join(input_folder, "*.jpg")))
+    file_list = sorted(glob.glob(os.path.join(input_folder, f"*.{parts[1]}")))
 
     if not file_list:
-        print(f"No JPG images found in {input_folder}")
+        print(f"No {parts[1]} images found in {input_folder}")
         return
 
     print(f"Processing {len(file_list)} images from {input_folder} → {output_folder}")
@@ -237,11 +238,13 @@ def process_folder_with_convert_workers(
 
     start_time = time.time()
 
+    parts = tag.split("-",1)
+    parts = parts[1].split("_",4)
     # Glob all jpg files in input_folder
-    file_list = sorted(glob.glob(os.path.join(input_folder, "*.jpg")))
-
+    file_list = sorted(glob.glob(os.path.join(input_folder, f"*.{parts[1]}")))
+    
     if not file_list:
-        print(f"No JPG images found in {input_folder}")
+        print(f"No {parts[1]} images found in {input_folder}")
         return
 
     print(f"Processing {len(file_list)} images from {input_folder} → {output_folder} (parallel with {max_workers} workers)")

@@ -8,6 +8,7 @@
 ELEM1 = $(word $2,$(subst -, ,$1))
 ELEM2 = $(word $2,$(subst ., ,$(subst -, ,$1)))
 ELEM3 = $(word $2, $(subst /, ,$(subst -, ,$1)))
+ELEM4 = $(word $2,$(subst _, ,$1))
 
 define newline
 
@@ -26,51 +27,68 @@ init-folders:
 	touch data/openmvs/.gitkeep
 	touch data/outputs/.gitkeep
 
-FPS = 0.50
-RATIO = 0.70
-ENGINE = INCREMENTAL
-
 
 ## Extract frames block
 
 extract-frames.title = Extract frames from one or more videos.
 
-video-roots := DJI_0145 DJI_0146 DJI_0150
+video-roots := DJI_0145 DJI_0146 DJI_0149 DJI_0150
 fps-roots := 0.20 0.40 0.60 0.80 1.00 1.20 1.40 1.60 1.80
+format-roots := jpg png
+width-roots := 1600 1280 1024 800
+filter-roots := filtered greyscale
 
 video-folder = data/videos
 frame-folder = data/frames
+
 poetry-base = poetry run python scripts/cli.py
-extract-options = --threads=16 --quality=2 --max_width=600 --format=png
+#poetry-base = echo
+extract-options = --threads=16
 
 DJI_0145.skip = 20
 DJI_0146.skip = 60
+DJI_0149.skip = 10
 DJI_0150.skip = 30
 
-# expects targets like:  data/frames/DJI_0145/FPS-1.00-original
-define recipe-fps-folder
-	$(poetry-base) extract-frames $(video-folder)/$(call ELEM3,$(@),3).MP4 --output-dir=$(frame-folder)/$(call ELEM3,$(@),3)/FPS-$(call ELEM3,$(@),5)-$(call ELEM3,$(@),6) --skip=$($(call ELEM3,$(@),3).skip) --fps=$(call ELEM3,$(@),5) --tag=$(call ELEM3,$(@),6) $(extract-options)
+# expects targets like:  data/frames/DJI_0145/base_png_1.00_600
+# filter_format_fps_width
+define recipe-base-folder
+	$(poetry-base) extract-frames $(video-folder)/$(call ELEM3,$(@),3).MP4 \
+		--output-dir=$(frame-folder)/$(call ELEM3,$(@),3)/$(call ELEM3,$(@),4) \
+		--skip=$($(call ELEM3,$(@),3).skip) \
+		--tag=$(call ELEM3,$(@),3)-$(call ELEM3,$(@),4) \
+		--format=$(call ELEM4,$(call ELEM3,$(@),4),2) \
+		--fps=$(call ELEM4,$(call ELEM3,$(@),4),3) \
+		--max_width=$(call ELEM4,$(call ELEM3,$(@),4),4) \
+		$(extract-options)
 endef
 
 
-# expects targets like:  data/frames/DJI_0145/FPS-1.00-filtered
+# expects targets like:  data/frames/DJI_0145/filtered_png_1.00_600
 define recipe-filtered-folder
-	$(poetry-base) convert-images --input-folder=$(call ELEM1,$(@),1)-$(call ELEM1,$(@),2)-original --output-folder=$(@) --tag=$(call ELEM1,$(@),3) --workers=8
+	$(poetry-base) convert-images \
+	--input-folder=$(call ELEM3,$(@),1)/$(call ELEM3,$(@),2)/$(call ELEM3,$(@),3)/base_$(subst $(word 1,$(subst _, ,$(call ELEM3,$(@),4)))_,,$(call ELEM3,$(@),4)) \
+	--output-folder=$(@) \
+	--tag=$(call ELEM3,$(@),3)-$(call ELEM3,$(@),4) --workers=8
 endef
 
-# expects targets like:  data/frames/DJI_0145/FPS-1.00-filtered
+# expects targets like:  data/frames/DJI_0145/png-1.00-greyscale
 define recipe-greyscale-folder
-	$(poetry-base) convert-images --input-folder=$(call ELEM1,$(@),1)-$(call ELEM1,$(@),2)-original --output-folder=$(@) --tag=$(call ELEM1,$(@),3) --workers=8 --greyscale
+	$(poetry-base) convert-images \
+	--input-folder=$(call ELEM3,$(@),1)/$(call ELEM3,$(@),2)/$(call ELEM3,$(@),3)/base_$(subst $(word 1,$(subst _, ,$(call ELEM3,$(@),4)))_,,$(call ELEM3,$(@),4)) \
+	--output-folder=$(@) \
+	--greyscale \
+	--tag=$(call ELEM3,$(@),3)-$(call ELEM3,$(@),4) --workers=8
 endef
 
-original-targets := $(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(frame-folder)/$(video)/FPS-$(fps)-original))
-filtered-targets := $(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(frame-folder)/$(video)/FPS-$(fps)-filtered))
-greyscale-targets := $(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(frame-folder)/$(video)/FPS-$(fps)-greyscale))
-$(original-targets) : ; $(recipe-fps-folder)
-$(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(eval $(frame-folder)/$(video)/FPS-$(fps)-filtered : $(frame-folder)/$(video)/FPS-$(fps)-original ; $$(recipe-filtered-folder)$(newline))) )
-$(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(eval $(frame-folder)/$(video)/FPS-$(fps)-greyscale : $(frame-folder)/$(video)/FPS-$(fps)-original ; $$(recipe-greyscale-folder)$(newline))) )
+base-roots := $(foreach filter,base,$(foreach format,$(format-roots),$(foreach fps,$(fps-roots),$(foreach width,$(width-roots),$(filter)_$(format)_$(fps)_$(width)))))
+tag-roots := $(foreach filter,$(filter-roots),$(foreach format,$(format-roots),$(foreach fps,$(fps-roots),$(foreach width,$(width-roots),$(filter)_$(format)_$(fps)_$(width)))))
+#$(info $(base-roots))
 
-extract-frames : $(greyscale-targets) $(filtered-targets)
+base-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(frame-folder)/$(video)/$(base)))
+$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(eval $(frame-folder)/$(video)/$(base) : ; $$(recipe-base-folder))))
+filtered-targets := $(foreach video,$(video-roots),$(foreach tag,$(tag-roots),$(frame-folder)/$(video)/$(tag)))
+$(foreach video,$(video-roots),$(foreach tag,$(tag-roots),$(eval $(frame-folder)/$(video)/$(tag) : $(frame-folder)/$(video)/base_$(subst $(word 1,$(subst _, ,$(tag)))_,,$(tag)) ; $$(recipe-$(call ELEM4,$(tag),1)-folder))))
 
 
 ## COLMAP pipeline block (greyscale, filtered, original)
@@ -113,10 +131,11 @@ clean-frames:
 
 clean:
 	rm -rf data/colmap/*
-	rm -rf data/colmap-tuning/*
+	rm -rf data/colmap/*
 	rm -rf data/openmvg/*
 	rm -rf data/openmvs/*
 	rm -rf data/outputs/*
+	rm -rf data/gsplat/*
 	rm -rf data/visuals/*
 
 

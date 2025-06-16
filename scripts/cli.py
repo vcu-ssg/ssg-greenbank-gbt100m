@@ -82,7 +82,7 @@ def analyze_graph(matches_file, show_disconnected):
 @click.option("--contrast", default="5x50%", show_default=True, help="Sigmoidal contrast amount, e.g. 5x50%%")
 @click.option("--greyscale/--no-greyscale", default=False, help="Convert to greyscale")
 @click.option("--crop", default=None, help="Crop geometry, e.g. WxH+X+Y (optional)")
-@click.option("--tag", default="filtered", help="tag for file name (optional)")
+@click.option("--tag", default="filtered", help="tag for file name")
 @click.option("--workers", default=8, help="Number of separate workers")
 def convert_images(input_folder, output_folder, sharpen, contrast, greyscale, crop, tag,workers ):
     """Run ImageMagick convert on all images in input folder."""
