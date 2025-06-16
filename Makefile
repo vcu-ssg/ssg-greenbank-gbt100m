@@ -32,14 +32,17 @@ init-folders:
 
 extract-frames.title = Extract frames from one or more videos.
 
+# ----------------------
 video-roots := DJI_0145 DJI_0146 DJI_0149 DJI_0150
 fps-roots := 0.20 0.40 0.60 0.80 1.00 1.20 1.40 1.60 1.80
 format-roots := jpg png
 width-roots := 1600 1280 1024 800
 filter-roots := filtered greyscale
+# ----------------------
 
 video-folder = data/videos
 frame-folder = data/frames
+colmap-folder = data/colmap
 
 poetry-base = poetry run python scripts/cli.py
 #poetry-base = echo
@@ -81,42 +84,29 @@ define recipe-greyscale-folder
 	--tag=$(call ELEM3,$(@),3)-$(call ELEM3,$(@),4) --workers=8
 endef
 
+# base_png_0.60_900
 base-roots := $(foreach filter,base,$(foreach format,$(format-roots),$(foreach fps,$(fps-roots),$(foreach width,$(width-roots),$(filter)_$(format)_$(fps)_$(width)))))
 tag-roots := $(foreach filter,$(filter-roots),$(foreach format,$(format-roots),$(foreach fps,$(fps-roots),$(foreach width,$(width-roots),$(filter)_$(format)_$(fps)_$(width)))))
 #$(info $(base-roots))
 
+# data/frames/DJI_0150/base_png_0.60_900
 base-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(frame-folder)/$(video)/$(base)))
 $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(eval $(frame-folder)/$(video)/$(base) : ; $$(recipe-base-folder))))
 filtered-targets := $(foreach video,$(video-roots),$(foreach tag,$(tag-roots),$(frame-folder)/$(video)/$(tag)))
 $(foreach video,$(video-roots),$(foreach tag,$(tag-roots),$(eval $(frame-folder)/$(video)/$(tag) : $(frame-folder)/$(video)/base_$(subst $(word 1,$(subst _, ,$(tag)))_,,$(tag)) ; $$(recipe-$(call ELEM4,$(tag),1)-folder))))
 
 
+
 ## COLMAP pipeline block (greyscale, filtered, original)
-# assumes: data/colmap-tuning/DJI_0145-FPS-1.00-greyscale
+# assumes: data/colmap/DJI_0145/base_png_1.00_900
 define recipe-colmap-folder
-	$(poetry-base) run-colmap-pipeline-cli data/frames/$(call ELEM3,$(@),4)/FPS-$(call ELEM3,$(@),6)-$(call ELEM3,$(@),7) $(@)
+	$(poetry-base) run-colmap-pipeline-cli data/frames/$(call ELEM3,$(@),3)/$(call ELEM3,$(@),4) $(@)
 endef
 
-# GREYSCALE
-colmap-greyscale-targets := $(foreach video,$(video-roots),$(foreach fps,$(fps-roots),data/colmap-tuning/$(video)-FPS-$(fps)-greyscale))
-
-$(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(eval data/colmap-tuning/$(video)-FPS-$(fps)-greyscale : data/frames/$(video)/FPS-$(fps)-greyscale ; $$(recipe-colmap-folder)$(newline))))
-
-colmap-pipeline-greyscale : $(colmap-greyscale-targets)
-
-# FILTERED
-colmap-filtered-targets := $(foreach video,$(video-roots),$(foreach fps,$(fps-roots),data/colmap-tuning/$(video)-FPS-$(fps)-filtered))
-
-$(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(eval data/colmap-tuning/$(video)-FPS-$(fps)-filtered : data/frames/$(video)/FPS-$(fps)-filtered ; $$(recipe-colmap-folder)$(newline))))
-
-colmap-pipeline-filtered : $(colmap-filtered-targets)
-
-# ORIGINAL
-colmap-original-targets := $(foreach video,$(video-roots),$(foreach fps,$(fps-roots),data/colmap-tuning/$(video)-FPS-$(fps)-original))
-
-$(foreach video,$(video-roots),$(foreach fps,$(fps-roots),$(eval data/colmap-tuning/$(video)-FPS-$(fps)-original : data/frames/$(video)/FPS-$(fps)-original ; $$(recipe-colmap-folder)$(newline))))
-
-colmap-pipeline-original : $(colmap-original-targets)
+# data/colmap/DJI_0150-base_png_0.60_800
+colmap-targets := $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(colmap-folder)/$(video)-$(tag)))
+#$(info $(colmap-targets))
+$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(colmap-folder)/$(video)-$(tag) : data/frames/$(video)/$(tag) ; $$(recipe-colmap-folder)$(newline))))
 
 
 
@@ -196,9 +186,11 @@ cuda-test:
 		'echo $$TORCH_CUDA_ARCH_LIST && python -c "import torch; print(torch.version.cuda, torch.cuda.get_device_properties(0))"'
 
 
-test: data/colmap-tuning/DJI_0150-FPS-0.60-original
+
+
+test: data/colmap/DJI_0150-base_png_0.60_800
 	poetry run python scripts/cli.py gsplat2 \
-	--scene=DJI_0150-FPS-0.60-original \
-	--frames-dir=data/frames/DJI_0150/FPS-0.60-original \
-	--sparse-dir=data/colmap-tuning/DJI_0150-FPS-0.60-original \
-	--output-dir=data/gsplat/DJI_0150-FPS-0.60-original
+	--scene=DJI_0150-base_png_0.60_800 \
+	--frames-dir=data/frames/DJI_0150/base_png_0.60_800 \
+	--sparse-dir=data/colmap/DJI_0150-base_png_0.60_800 \
+	--output-dir=data/gsplat/DJI_0150-base_png_0.60_800
