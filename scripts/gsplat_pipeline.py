@@ -57,7 +57,8 @@ def run_gsplat2_training(scene, frames_dir, sparse_dir, output_dir):
         "python", "train.py",
         "--data_device=cpu",
         "--resolution=8",
-        "--sh_degree=1",        
+        "--sh_degree=1",
+        "--test_iterations=-1",
         "--source_path", sparse_container,     # ✅ this is the COLMAP project root
         "--model_path", model_container,       # ✅ full path to sparse/0
         "--images", frames_container

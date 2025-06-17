@@ -172,7 +172,7 @@ shell-gsplat2:
 
 build-gsplat2:
 	@echo "🐳 Rebuilding Docker image using docker-compose in ./docker..."
-	docker compose -f ./docker/docker-compose.yml build gsplat2
+	COMPOSE_BAKE=true docker compose -f ./docker/docker-compose.yml build gsplat2
 	@echo "✅ Done: gsplat2 rebuilt with fresh environment and SM_90 support"
 
 rebuild-gsplat2:
