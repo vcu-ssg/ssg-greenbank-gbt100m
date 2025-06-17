@@ -93,9 +93,9 @@ def run_colmap_model_converter(input_model_path, output_ply_path):
     ], "COLMAP ModelConverter (Export PLY)")
 
 def host_to_container_path(host_path):
-    if not os.path.abspath(host_path).startswith(os.path.abspath("data")):
-        raise ValueError(f"Path {host_path} is outside of data/ folder!")
-    return "/data/" + os.path.relpath(host_path, "data")
+    if not os.path.abspath(host_path).startswith(os.path.abspath("projects")):
+        raise ValueError(f"Path {host_path} is outside of projects/ folder!")
+    return "/projects/" + os.path.relpath(host_path, "projects")
 
 def run_colmap_pipeline(image_path, colmap_output_folder):
     # 1️⃣ Ensure host folders exist

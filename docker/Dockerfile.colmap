@@ -3,7 +3,8 @@
 # CUDA is disabled in SiftGPU via CMake patch
 # -------------------------------------------------------------------
 
-FROM nvidia/cuda:12.2.0-devel-ubuntu22.04
+#FROM nvidia/cuda:12.2.0-devel-ubuntu22.04
+FROM nvidia/cuda:12.9.1-cudnn-devel-ubuntu22.04
 
 # Environment setup
 ENV DEBIAN_FRONTEND=noninteractive
@@ -35,14 +36,24 @@ WORKDIR /opt/colmap
 RUN git checkout 3.11.1
 
 # Patch SiftGPU CMakeLists.txt (if needed — safe to always run)
-RUN sed -i 's@-gencode arch=compute_native,code=sm_native@-gencode arch=compute_86,code=sm_86 -gencode arch=compute_89,code=sm_89@' /opt/colmap/src/thirdparty/SiftGPU/CMakeLists.txt || true
+#RUN sed -i 's@-gencode arch=compute_native,code=sm_native@-gencode arch=compute_86,code=sm_86 -gencode arch=compute_89,code=sm_89@' /opt/colmap/src/thirdparty/SiftGPU/CMakeLists.txt || true
 
 # Patch src/CMakeLists.txt (main source of compute_native)
-RUN sed -i 's@-gencode arch=compute_native,code=sm_native@-gencode arch=compute_86,code=sm_86 -gencode arch=compute_89,code=sm_89@' /opt/colmap/src/CMakeLists.txt || true
+#RUN sed -i 's@-gencode arch=compute_native,code=sm_native@-gencode arch=compute_86,code=sm_86 -gencode arch=compute_89,code=sm_89@' /opt/colmap/src/CMakeLists.txt || true
+
+# Patch SiftGPU CMakeLists.txt to use sm_120 instead of compute_native
+RUN sed -i 's@-gencode arch=compute_native,code=sm_native@-gencode arch=compute_120,code=sm_120@' /opt/colmap/src/thirdparty/SiftGPU/CMakeLists.txt || true
+
+# Patch main src/CMakeLists.txt to use sm_120
+RUN sed -i 's@-gencode arch=compute_native,code=sm_native@-gencode arch=compute_120,code=sm_120@' /opt/colmap/src/CMakeLists.txt || true
+
+
+RUN rm -rf build
 
 # Build COLMAP (note: CUDA_ENABLED=OFF disables CUDA usage internally)
 RUN mkdir build && cd build && \
-    cmake .. -DCUDA_ENABLED=OFF && \
+    cmake .. \
+    -DCUDA_ENABLED=OFF && \
     make -j$(nproc) && \
     make install
 

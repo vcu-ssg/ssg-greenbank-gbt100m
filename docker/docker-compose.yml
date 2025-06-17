@@ -8,29 +8,33 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
-      - ../data:/data
+      - ../projects:/projects
     working_dir: /opt/gaussian-splatting
     command: bash
 
-  gsplat2:
+  sibr:
     build:
       context: .
-      dockerfile: Dockerfile.gsplat2
+      dockerfile: Dockerfile.sibr
+    image: sibr-viewer
     runtime: nvidia
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
     volumes:
-      - ../data:/data
-    working_dir: /opt/gaussian-splatting
-    command: bash
+      - .:/workspace
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    working_dir: /workspace
+    command: /bin/bash
 
+    
   colmap:
     build:
       context: .
       dockerfile: Dockerfile.colmap
     runtime: nvidia
     volumes:
-      - ../data:/data
+      - ../projects:/projects
     command: bash
     environment:
     - QT_QPA_PLATFORM=offscreen

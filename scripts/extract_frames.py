@@ -232,16 +232,15 @@ def process_folder_with_convert_workers(
     greyscale=False,
     crop=None,
     tag="filtered",
-    max_workers=8
+    max_workers=8,
+    format="png"
 ):
-    """Process all .jpg files in input_folder using process_image_with_convert (parallel), with timing."""
+    """Process all files in input_folder using process_image_with_convert (parallel), with timing."""
 
     start_time = time.time()
 
-    parts = tag.split("-",1)
-    parts = parts[1].split("_",4)
     # Glob all jpg files in input_folder
-    file_list = sorted(glob.glob(os.path.join(input_folder, f"*.{parts[1]}")))
+    file_list = sorted(glob.glob(os.path.join(input_folder, f"*.{format}")))
     
     if not file_list:
         print(f"No {parts[1]} images found in {input_folder}")

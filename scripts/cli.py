@@ -84,9 +84,11 @@ def analyze_graph(matches_file, show_disconnected):
 @click.option("--crop", default=None, help="Crop geometry, e.g. WxH+X+Y (optional)")
 @click.option("--tag", default="filtered", help="tag for file name")
 @click.option("--workers", default=8, help="Number of separate workers")
-def convert_images(input_folder, output_folder, sharpen, contrast, greyscale, crop, tag,workers ):
+@click.option("--format", default="png", help="Input image format (png/jpg)")
+def convert_images(input_folder, output_folder, sharpen, contrast, greyscale, crop, tag,workers,format ):
     """Run ImageMagick convert on all images in input folder."""
     click.echo(f"👉 Converting images in {input_folder} → {output_folder}")
+    click.echo(f"  Format    : {format}")
     click.echo(f"  Sharpen   : {sharpen}")
     click.echo(f"  Contrast  : {contrast}")
     click.echo(f"  Greyscale : {'ON' if greyscale else 'OFF'}")
@@ -101,7 +103,8 @@ def convert_images(input_folder, output_folder, sharpen, contrast, greyscale, cr
         greyscale=greyscale,
         crop=crop,
         tag=tag,
-        max_workers=workers
+        max_workers=workers,
+        format=format
     )
 
     click.echo(f"✅ Done. Processed images in: {output_folder}")
@@ -120,12 +123,12 @@ def run_colmap_pipeline_cli(image_path, colmap_output_folder):
 
 @cli.command()
 @click.option('--scene', required=True, help='Scene name, e.g. DJI_0145-FPS-1.60-original')
-@click.option('--frames-dir', required=True, type=click.Path(), help='Path to input images')
+@click.option('--images-dir', required=True, type=click.Path(), help='Path to input images')
 @click.option('--sparse-dir', required=True, type=click.Path(), help='Path to sparse COLMAP model (sparse/0)')
-@click.option('--output-dir', required=True, type=click.Path(), help='Output directory for gsplat results')
-def gsplat2(scene, frames_dir, sparse_dir, output_dir):
+@click.option('--model-dir', required=True, type=click.Path(), help='Output directory for gsplat results')
+def gsplat(scene, images_dir, sparse_dir, model_dir):
     """Run Gaussian Splatting training for a specific scene with provided paths."""
-    gsplat_pipeline.run_gsplat2_training(scene, frames_dir, sparse_dir, output_dir)
+    gsplat_pipeline.run_gsplat_training(scene, images_dir, sparse_dir, model_dir)
 
 
 if __name__ == "__main__":
