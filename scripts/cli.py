@@ -126,9 +126,11 @@ def run_colmap_pipeline_cli(image_path, colmap_output_folder):
 @click.option('--images-dir', required=True, type=click.Path(), help='Path to input images')
 @click.option('--sparse-dir', required=True, type=click.Path(), help='Path to sparse COLMAP model (sparse/0)')
 @click.option('--model-dir', required=True, type=click.Path(), help='Output directory for gsplat results')
-def gsplat(scene, images_dir, sparse_dir, model_dir):
+@click.option('--iterations', required=True, help='Iterations to gsplat')
+@click.option('--sh_degree', required=True, help='Spherical Harmonics degree. 0-none, 1-2 lower res, 3-4 higher res')
+def gsplat(scene, images_dir, sparse_dir, model_dir,iterations,sh_degree):
     """Run Gaussian Splatting training for a specific scene with provided paths."""
-    gsplat_pipeline.run_gsplat_training(scene, images_dir, sparse_dir, model_dir)
+    gsplat_pipeline.run_gsplat_training(scene, images_dir, sparse_dir, model_dir,iterations,sh_degree)
 
 
 if __name__ == "__main__":

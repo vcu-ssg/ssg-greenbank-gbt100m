@@ -15,7 +15,7 @@ def host_to_container_path(host_path: str) -> str:
     return os.path.join("/projects", rel_path)
 
 
-def run_gsplat_training(scene, images_dir, sparse_dir, model_dir):
+def run_gsplat_training(scene, images_dir, sparse_dir, model_dir, iterations=30000, sh_degree=3):
     logger.info(f"🟢 Running gsplat for {scene}")
     logger.info(f"📸 Host Images      : {images_dir}")
     logger.info(f"📈 Host Sparse model: {sparse_dir}")
@@ -56,7 +56,9 @@ def run_gsplat_training(scene, images_dir, sparse_dir, model_dir):
         "python", "train.py",
         "--source_path", sparse_container,     # ✅ this is the COLMAP project root
         "--model_path", output_container,       # ✅ full path to sparse/0
-        "--images", frames_container
+        "--images", frames_container,
+        "--iterations", iterations,
+        "--sh_degree", sh_degree
     ]
 
     run_subprocess(cmd, f"gsplat2 [{scene}]")
