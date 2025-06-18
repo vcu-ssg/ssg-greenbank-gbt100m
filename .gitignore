@@ -13,14 +13,13 @@ poetry.lock
 # === Jupyter Notebook checkpoints ===
 .ipynb_checkpoints/
 
-# === Data folders (large reproducible files) ===
 
 videos/*
 !videos/README.md
-!videos/.gitkeep
+!videos/small_example.MP4
+
 projects/*
 !projects/README.md
-!projects/.gitkeep
 
 
 
