@@ -1,8 +1,11 @@
 import os
 import re
 import json
+import time
+import pandas as pd
 import subprocess
 from pathlib import Path
+
 
 from scripts.utils import run_subprocess, DOCKER_COMPOSE_PREFIX
 from loguru import logger
@@ -94,18 +97,15 @@ def run_colmap_model_converter(input_model_path, output_ply_path):
         "--output_type", "PLY"
     ], "COLMAP ModelConverter (Export PLY)")
 
-def run_colmap_model_analyzer(model_folder_in_container, stats_file ):
+def run_colmap_model_analyzer(model_folder_in_container, stats_file, elapsed_time ):
     """
     Run COLMAP model_analyzer inside container and save output as JSON in colmap/stats/model_analyzer.json.
-    `model_folder_in_container` should be like /projects/.../colmap/sparse/0
+    `model_folder_in_container` should be like /projects/project_name/colmap/sparse/0
     """
-
-    # Derive output folder path (e.g., /projects/.../colmap)
-    colmap_root = Path(model_folder_in_container).parents[1]
     
-    # Extract scenario name (last component of root folder)
-    scenario_name = os.path.basename(colmap_root)
-
+    scenario_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(model_folder_in_container))))
+    model_id = os.path.basename( model_folder_in_container )
+    
     cmd = DOCKER_COMPOSE_PREFIX + [
         "run", "--rm",
         "--user", f"{os.getuid()}:{os.getgid()}",
@@ -118,9 +118,19 @@ def run_colmap_model_analyzer(model_folder_in_container, stats_file ):
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         output = result.stderr
         
+        video, config = scenario_name.split("-", 1)
+        format_, filter_, fps, max_dim = config.split("_")
+
         stats = {
             "Scenario": scenario_name,
-            "Timestamp": datetime.now().isoformat()
+            "Model ID": model_id,
+            "Video": video,
+            "Format": format_,
+            "Filter": filter_,
+            "FPS": float(fps),
+            "MaxDim": int(max_dim),
+            "Timestamp": datetime.now().isoformat(),
+            "Elapsed": elapsed_time,  # assumed to be already a formatted string or float
         }
 
         patterns = {
@@ -142,8 +152,30 @@ def run_colmap_model_analyzer(model_folder_in_container, stats_file ):
                     stats[key] = float(match.group(1)) if '.' in match.group(1) else int(match.group(1))
                     break
 
+        # Convert to DataFrame
+        df = pd.DataFrame([stats])
+
+        # Add derived metrics
+        try:
+            df["pts_per_img"] = df["Points3D"] / df["Images"]
+            df["obs_per_pt"] = df["Observations"] / df["Points3D"]
+            df["obs_per_img"] = df["Observations"] / df["Images"]
+            df["quality"] = df["Points3D"] / df["Mean Reprojection Error"]
+
+            # 💡 Other useful stats
+            df["points_per_registered_img"] = df["Points3D"] / df["Registered Images"]
+            df["obs_per_registered_img"] = df["Observations"] / df["Registered Images"]
+            df["obs_per_cam"] = df["Observations"] / df["Cameras"]
+            df["pts_per_cam"] = df["Points3D"] / df["Cameras"]
+        except ZeroDivisionError as e:
+            logger.warning(f"⚠️ Division by zero in derived metrics: {e}")
+
+
+
+        # Save enriched stats as JSON
+        df_out = df.to_dict(orient="records")[0]  # single-row dict
         with open(stats_file, "w") as f:
-            json.dump(stats, f, indent=2)
+            json.dump(df_out, f, indent=2)
 
         base = Path(stats_file)
         txt_filename = base.with_suffix(".txt")
@@ -164,6 +196,10 @@ def host_to_container_path(host_path):
 
 def run_colmap_pipeline(image_path, colmap_output_folder):
     """ Created a COLMAP pipeline """
+    
+    start_time = time.time()  # ⏱️ Start timer
+     
+     
     # 1️⃣ Ensure host folders exist
     os.makedirs(colmap_output_folder, exist_ok=True)
     sparse_folder = os.path.join(colmap_output_folder, "sparse")
@@ -195,7 +231,9 @@ def run_colmap_pipeline(image_path, colmap_output_folder):
     if os.path.exists(points3D_bin_host):
         logger.info(f"✅ Mapper produced model — exporting PLY to {ply_output_path_host}")
         run_colmap_model_converter(model_0_folder_in_container, ply_output_path_in_container)
-        run_colmap_model_analyzer(model_0_folder_in_container,stats_file)
+        
+        elapsed_time = time.time() - start_time
+        run_colmap_model_analyzer(model_0_folder_in_container,stats_file,elapsed_time )
 
         # 6️⃣ Count points (optional)
         from scripts.utils import count_ply_points
@@ -236,4 +274,4 @@ def run_colmap_point_filtering(input_model_host, output_model_host, min_track_le
 
     stats_folder = os.path.dirname(os.path.dirname( output_model_host ))
     stats_file = os.path.join(stats_folder, f"stats/model_analyzer-sparse-{os.path.basename(output_model_host)}.json")
-    run_colmap_model_analyzer(output_model_container,stats_file)
+    run_colmap_model_analyzer(output_model_container,stats_file, 0.0)

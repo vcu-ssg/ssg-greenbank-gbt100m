@@ -38,7 +38,6 @@ format-roots := jpg png
 # that converts images from "base" to "filtered"
 filter-roots := filtered greyscale
 
-
 # ----------------------
 
 videos-folder = ./videos
@@ -178,7 +177,12 @@ colmap-targets := $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(t
 #$(info $(colmap-targets))
 $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/colmap : $(projects-folder)/$(video)-$(tag)/images ; $$(recipe-colmap-folder)$(newline))))
 
-model-roots := 0 0_clean
+
+# projects/DJI_0150-base_png_0.60_800/colmap/sparse/0
+colmap-targets := $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/colmap/sparse/0))
+#$(info $(colmap-targets))
+$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/colmap/sparse/0 : $(projects-folder)/$(video)-$(tag)/colmap ; $(newline))))
+
 
 # projects/DJI_0150-base_png_0.60_800/colmap/sparse/0_clean
 colmap-clean-targets := $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/colmap/sparse/0_clean))
@@ -189,6 +193,8 @@ $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $
 gsplat-targets := $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/gsplat))
 # projects/DJI_0145-base_png_1.00_900/gsplat : projects/DJI_0145-base_png_1.00_900/colmap/sparse/0_clean ; $(recipe-gsplat-folder)
 $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/gsplat : $(projects-folder)/$(video)-$(tag)/colmap/sparse/0_clean ; $$(recipe-gsplat-folder)$(newline))))
+
+model-roots := 0 0_clean
 
 # projects/DJI_0150-png_base_0.60_1600/gsplat/0_clean
 gsplat-targets-2 := $(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/gsplat/$(model))))
@@ -236,3 +242,12 @@ $(foreach container,$(container-roots),shell-$(container)) :
 cuda-test:
 	docker compose -f ./docker/docker-compose.yml run --rm gsplat bash -c \
 		'echo $$TORCH_CUDA_ARCH_LIST && python -c "import torch; print(torch.version.cuda, torch.cuda.get_device_properties(0))"'
+
+
+all-clean-colmaps : $(colmap-clean-targets)
+
+test : \
+	all-clean-colmaps
+	projects/DJI_0145-jpg_base_0.20_1600/gsplat \
+	projects/DJI_0145-jpg_base_0.20_1600/gsplat/0 \
+	projects/DJI_0145-jpg_base_0.20_1600/gsplat/0_clean

@@ -1,0 +1,17 @@
+project:
+  type: website
+  output-dir: ../docs
+
+website:
+  title: "today"
+  navbar:
+    left:
+      - href: catalog.qmd
+        text: Catalog
+
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+    toc: true
+  
