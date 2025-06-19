@@ -2,8 +2,9 @@
 title: ply viewer
 format:
   html:
-    toc: true
-    code-fold: true
+    minimal: true
+    #toc: true
+    #code-fold: true
     include-in-header: # This is a good place to include external JS libraries
       text: |
         <style>
@@ -21,7 +22,7 @@ format:
 ```{python}
 import shutil
 
-input = "../projects/DJI_0145-jpg_base_1.60_1600/colmap/sparse/0_clean.ply"
+input = "../projects/DJI_0145-jpg_base_1.60_1600/colmap/sparse/0_clean/points3D.bin"
 output = "../docs/0_clean.ply"
 shutil.copyfile( input, output )
 
@@ -63,7 +64,7 @@ shutil.copyfile( input, output )
 
   // Replace 'sparse_points.ply' with the actual path to your exported COLMAP PLY file
   // Example: if it's in a 'data' folder next to your .qmd: './data/sparse_points.ply'
-  const plyFilePath = './0_clean.ply';
+  const plyFilePath = './airplane.ply';
 
   loader.load(
     plyFilePath,

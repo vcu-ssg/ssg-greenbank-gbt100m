@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js PLY Loader Example</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <h1>hello!</h1>
+    <script type="module">
+        import * as THREE from 'https://unpkg.com/three@0.165.0/build/three.module.js';
+        import { OrbitControls } from 'https://unpkg.com/three@0.165.0/examples/jsm/controls/OrbitControls.js';
+        import { PLYLoader } from 'https://unpkg.com/three@0.165.0/examples/jsm/loaders/PLYLoader.js';
+
+        // --- Scene Setup ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xcccccc); // Light grey background
+
+        // --- Camera Setup ---
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 5); // Initial camera position
+
+        // --- Renderer Setup ---
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // --- OrbitControls Setup ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // Animate the controls to give a smoother feel
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 1;
+        controls.maxDistance = 500;
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(1, 1, 1).normalize();
+        scene.add(directionalLight);
+
+        // --- PLY Loader ---
+        const loader = new PLYLoader();
+
+        // IMPORTANT: Replace 'path/to/your/model.ply' with the actual path to your PLY file.
+        // Make sure your PLY file is in a directory accessible by your web server,
+        // or in the same directory as this HTML file for local testing.
+        loader.load(
+            'https://threejs.org/examples/models/ply/binary/Lucy100k.ply', // Example PLY file from Three.js examples
+            function (geometry) {
+                // If the PLY file contains color attributes, use MeshPhongMaterial for better appearance
+                // Otherwise, you might use a MeshStandardMaterial or MeshLambertMaterial.
+                const material = new THREE.MeshPhongMaterial({ color: 0x0055ff, flatShading: true }); // Default color if PLY has no vertex colors
+                // If the PLY has vertex colors, enable it:
+                if (geometry.attributes.color) {
+                    material.vertexColors = true;
+                }
+
+                const mesh = new THREE.Mesh(geometry, material);
+                scene.add(mesh);
+
+                // Optional: Center the loaded model and adjust camera
+                geometry.computeBoundingBox();
+                const boundingBox = geometry.boundingBox;
+                const center = new THREE.Vector3();
+                boundingBox.getCenter(center);
+                mesh.position.sub(center); // Center the object
+
+                // Fit camera to the loaded model
+                const size = new THREE.Vector3();
+                boundingBox.getSize(size);
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const fov = camera.fov * (Math.PI / 180);
+                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                cameraZ *= 1.5; // Add some padding
+                camera.position.z = cameraZ;
+                camera.position.y = cameraZ / 4; // Adjust Y position for better view
+                camera.lookAt(0, 0, 0); // Look at the center of the scene
+                controls.update(); // Update controls after camera position change
+            },
+            function (xhr) {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            },
+            function (error) {
+                console.error('An error happened', error);
+            }
+        );
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); // Only required if controls.enableDamping or controls.autoRotate are set to true
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- Handle Window Resize ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+<h2>end of script</h2>
+</body>
+</html>
