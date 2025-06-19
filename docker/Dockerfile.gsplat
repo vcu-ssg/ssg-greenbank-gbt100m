@@ -57,6 +57,23 @@ RUN pip install tqdm plyfile joblib opencv-python && \
     TORCH_CUDA_ARCH_LIST="12.0" pip install --no-build-isolation ./submodules/simple-knn && \
     TORCH_CUDA_ARCH_LIST="12.0" pip install --no-build-isolation ./submodules/fused-ssim
 
+## Fix logic so train.py accepts arbitrary scene folders, not hardcoded to sparse/0.
+RUN sed -i -E \
+  -e '/os\.path\.join/ s|"(sparse/0/[^"]+)"|"\1"|g' \
+  -e '/os\.path\.join/ s|"(sparse/0/)|"|g' \
+  -e '/os\.path\.join/ s|,\s*"sparse/0"||g' \
+  -e '/os\.path\.join/ s|"sparse/0/||g' \
+  /opt/gaussian-splatting/scene/dataset_readers.py && \
+  echo "✅ Fully patched 'sparse/0' in dataset_readers.py"
+
+
+# Remove "sparse" from os.path.join in a specific line of __init__.py
+RUN sed -i -E \
+  '/os\.path\.join\(args\.source_path,\s*["'\'']sparse["'\'']\)/ s|["'\'']sparse["'\'']|""|' \
+  /opt/gaussian-splatting/scene/__init__.py && \
+  echo "✅ Patched os.path.join(args.source_path, \"sparse\") in __init__.py"
+
+
 # Optional: Add non-root user
 RUN groupadd -g 1000 john && useradd -m -u 1000 -g 1000 john
 

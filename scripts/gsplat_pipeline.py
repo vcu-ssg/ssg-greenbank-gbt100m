@@ -4,7 +4,7 @@ from scripts.utils import run_subprocess
 from loguru import logger
 
 def host_to_container_path(host_path: str) -> str:
-    """Convert a host path like data/frames/... to container path /data/frames/..."""
+    """Convert a host path like projects/project_name/xxx/... to container path /projects/project_name/xxx """
     abs_host = os.path.abspath(host_path)
     abs_data_root = os.path.abspath("projects")
 
@@ -16,6 +16,8 @@ def host_to_container_path(host_path: str) -> str:
 
 
 def run_gsplat_training(scene, images_dir, sparse_dir, model_dir, iterations=30000, sh_degree=3):
+    """ gaussian splatting training pipeline """
+    
     logger.info(f"🟢 Running gsplat for {scene}")
     logger.info(f"📸 Host Images      : {images_dir}")
     logger.info(f"📈 Host Sparse model: {sparse_dir}")
@@ -61,4 +63,4 @@ def run_gsplat_training(scene, images_dir, sparse_dir, model_dir, iterations=300
         "--sh_degree", sh_degree
     ]
 
-    run_subprocess(cmd, f"gsplat2 [{scene}]")
+    run_subprocess(cmd, f"gsplat [{scene}]")

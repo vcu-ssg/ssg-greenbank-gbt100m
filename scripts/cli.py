@@ -120,6 +120,27 @@ def run_colmap_pipeline_cli(image_path, colmap_output_folder):
     run_colmap_pipeline(image_path, colmap_output_folder)
 
 
+@cli.command()
+@click.option("--input-model-folder", required=True, type=click.Path(exists=True, file_okay=False),
+              help="Path to the input COLMAP model folder (e.g., sparse/0)")
+@click.option("--output-model-folder", required=True, type=click.Path(),
+              help="Path to the output cleaned model folder (e.g., sparse/clean)")
+@click.option("--min-track-len", default=2, show_default=True, type=int,
+              help="Minimum number of observations per 3D point")
+@click.option("--max-reproj-error", default=4.0, show_default=True, type=float,
+              help="Maximum allowed reprojection error")
+@click.option("--min-tri-angle", default=1.5, show_default=True, type=float,
+              help="Maximum allowed reprojection error")
+def colmap_model_cleaner(input_model_folder, output_model_folder, min_track_len, max_reproj_error, min_tri_angle):
+    """Clean a COLMAP sparse model using model_cleaner."""
+    colmap_pipeline.run_colmap_point_filtering(
+        input_model_host=input_model_folder,
+        output_model_host=output_model_folder,
+        min_track_len=min_track_len,
+        max_reproj_error=max_reproj_error,
+        min_tri_angle=min_tri_angle
+    )
+
 
 @cli.command()
 @click.option('--scene', required=True, help='Scene name, e.g. DJI_0145-FPS-1.60-original')

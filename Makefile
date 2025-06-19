@@ -108,6 +108,15 @@ define recipe-colmap-folder
 	$(poetry-base) run-colmap-pipeline-cli $(firstword $(^)) $(@)
 endef
 
+#  projects/DJI_0145-base_png_1.00_900/colmap/sparse/0_clean : projects/DJI_0145-base_png_1.00_900/colmap ; $(recipe-colmap-clean-folder)
+define recipe-colmap-clean-folder
+	poetry run python scripts/cli.py colmap-model-cleaner \
+	--input-model-folder=$(firstword $(^))/sparse/0 \
+	--output-model-folder=$(@) \
+	--min-track-len=5 \
+	--max-reproj-error=1.0 \
+	--min-tri-angle=5.0
+endef
 
 # Apply gsplat to transform colmap folder to gsplat folder
 #   projects/DJI_0150-png_base_0.60_1600/gsplat : projects/DJI_0150-png_base_0.60_1600/colmap ; $(recipe-gsplat-folder)
@@ -121,6 +130,17 @@ define recipe-gsplat-folder
 	--sh_degree=3
 endef
 
+# Apply gsplat to transform colmap folder to gsplat folder
+#   projects/DJI_0150-png_base_0.60_1600/gsplat/0_clean : projects/DJI_0150-png_base_0.60_1600/colmap/sparse/0_clean ; $(recipe-gsplat-folder2)
+define recipe-gsplat-folder2
+	poetry run python scripts/cli.py gsplat \
+	--scene=$(call ELEM5,$(@),2) \
+	--images-dir=$(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/images \
+	--sparse-dir=$(firstword $(^)) \
+	--model-dir=$(@) \
+	--iterations=30000 \
+	--sh_degree=3
+endef
 
 # Key macros - this is where all the folder wiring happens!
 
@@ -158,20 +178,30 @@ colmap-targets := $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(t
 #$(info $(colmap-targets))
 $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/colmap : $(projects-folder)/$(video)-$(tag)/images ; $$(recipe-colmap-folder)$(newline))))
 
-# projects/DJI_0150-png_base_0.60_1600/gsplat
+model-roots := 0 0_clean
 
+# projects/DJI_0150-base_png_0.60_800/colmap/sparse/0_clean
+colmap-clean-targets := $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/colmap/sparse/0_clean))
+#$(info $(colmap-clean-targets))
+$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/colmap/sparse/0_clean : $(projects-folder)/$(video)-$(tag)/colmap ; $$(recipe-colmap-clean-folder)$(newline) )))
+
+# projects/DJI_0150-png_base_0.60_1600/gsplat
 gsplat-targets := $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/gsplat))
-# projects/DJI_0145-base_png_1.00_900/gsplat : projects/DJI_0145-base_png_1.00_900/colmap ; $(recipe-gsplat-folder)
-$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/gsplat : $(projects-folder)/$(video)-$(tag)/colmap ; $$(recipe-gsplat-folder)$(newline))))
+# projects/DJI_0145-base_png_1.00_900/gsplat : projects/DJI_0145-base_png_1.00_900/colmap/sparse/0_clean ; $(recipe-gsplat-folder)
+$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/gsplat : $(projects-folder)/$(video)-$(tag)/colmap/sparse/0_clean ; $$(recipe-gsplat-folder)$(newline))))
+
+# projects/DJI_0150-png_base_0.60_1600/gsplat/0_clean
+gsplat-targets-2 := $(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/gsplat/$(model))))
+# projects/DJI_0145-base_png_1.00_900/gsplat/0_clean : projects/DJI_0145-base_png_1.00_900/colmap/sparse/0_clean ; $(recipe-gsplat-folder2)
+$(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/gsplat/$(model) : $(projects-folder)/$(video)-$(tag)/colmap/sparse/$(model) ; $$(recipe-gsplat-folder2)$(newline)))))
 
 
 # Targets for cleaning folders
 
 step-roots := images colmap gsplat openmvg openmvs
 
-clean-all : ; find ./projects -mindepth 1 -type d -exec rm -rf {} +
+realclean : ; find ./projects -mindepth 1 -type d -exec rm -rf {} +
 $(foreach step,$(step-roots),$(eval clean-$(step) : ; $$(recipe-remove-folders)))
-
 define recipe-remove-folders
 	@matches=$$(find projects -mindepth 2 -maxdepth 2 -type d -name $(call ELEM1,$(@),2)); \
 	if [ -z "$$matches" ]; then \
