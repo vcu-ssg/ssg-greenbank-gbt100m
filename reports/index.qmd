@@ -6,3 +6,4 @@ photogrammetric pipeline
 
 
 
+<https://projects.markkellogg.org/threejs/demo_gaussian_splats_3d.php>

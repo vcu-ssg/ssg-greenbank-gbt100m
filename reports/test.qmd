@@ -68,16 +68,16 @@ import pandas as pd
 root = "DJI_0145-jpg_base_1.60_1600"
 
 input  = f"../projects/{root}/colmap/sparse/0.ply"
-output = f"../docs/data/{root}-0.ply"
-x = shutil.copyfile( input, output )
+model1 = f"../docs/data/{root}-0.ply"
+x = shutil.copyfile( input, model1 )
 
 input  = f"../projects/{root}/colmap/sparse/0_clean.ply"
-output = f"../docs/data/{root}-0_clean.ply"
-x = shutil.copyfile( input, output )
+model2 = f"../docs/data/{root}-0_clean.ply"
+x = shutil.copyfile( input, model2 )
 
 input = f"../projects/{root}/images/{root}_00001.jpg"
-output = f"../docs/data/{root}-image.jpg"
-x = shutil.copyfile( input, output )
+initial_image = f"../docs/data/{root}-image.jpg"
+x = shutil.copyfile( input, initial_image )
 
 
 def parse_root_to_table(root: str) -> pd.DataFrame:
@@ -142,7 +142,7 @@ print(f"""
 </div>
 <div class="viewer-block">
 <h3>Initial photo</h3>
-<div class="threejs-container"><img src="./data/DJI_0145-jpg_base_1.60_1600-image.jpg"/></div>
+<div class="threejs-container"><img src="./data/{root}-image.jpg"/></div>
 </div>
 </div>
 
@@ -155,7 +155,7 @@ print(f"""
 <script type="module">
   import { loadPLYViewer } from "./js/ply_viewer.js";
 
-  loadPLYViewer("viewer1", "./0.ply");
-  loadPLYViewer("viewer2", "./0_clean.ply");
+  loadPLYViewer("viewer1", "./data/DJI_0145-jpg_base_1.60_1600-0.ply");
+  loadPLYViewer("viewer2", "./data/DJI_0145-jpg_base_1.60_1600-0_clean.ply");
 </script>
 ```

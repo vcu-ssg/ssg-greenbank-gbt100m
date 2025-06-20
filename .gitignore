@@ -62,7 +62,7 @@ frame_*.png
 
 # === 3D output formats ===
 *.obj
-*.ply
+#*.ply
 *.mtl
 *.xyz
 *.mvs
