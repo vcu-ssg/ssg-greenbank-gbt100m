@@ -117,6 +117,16 @@ define recipe-colmap-clean-folder
 	--min-tri-angle=5.0
 endef
 
+#  projects/DJI_0145-base_png_1.00_900/colmap/sparse/0_clean2 : projects/DJI_0145-base_png_1.00_900/colmap ; $(recipe-colmap-clean2-folder)
+define recipe-colmap-clean2-folder
+	poetry run python scripts/cli.py colmap-model-cleaner \
+	--input-model-folder=$(firstword $(^))/sparse/0 \
+	--output-model-folder=$(@) \
+	--min-track-len=3 \
+	--max-reproj-error=2.0 \
+	--min-tri-angle=3.0
+endef
+
 # Apply gsplat to transform colmap folder to gsplat folder
 #   projects/DJI_0150-png_base_0.60_1600/gsplat : projects/DJI_0150-png_base_0.60_1600/colmap ; $(recipe-gsplat-folder)
 define recipe-gsplat-folder
@@ -194,7 +204,7 @@ gsplat-targets := $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(t
 # projects/DJI_0145-base_png_1.00_900/gsplat : projects/DJI_0145-base_png_1.00_900/colmap/sparse/0_clean ; $(recipe-gsplat-folder)
 $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/gsplat : $(projects-folder)/$(video)-$(tag)/colmap/sparse/0_clean ; $$(recipe-gsplat-folder)$(newline))))
 
-model-roots := 0 0_clean
+model-roots := 0 0_clean 0_clean2
 
 # projects/DJI_0150-png_base_0.60_1600/gsplat/0_clean
 gsplat-targets-2 := $(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/gsplat/$(model))))

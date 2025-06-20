@@ -1,9 +1,12 @@
 project:
   type: website
   output-dir: ../docs
+  resources:
+  - js/
 
 website:
   title: "today"
+  search: false
   navbar:
     left:
       - href: catalog.qmd
