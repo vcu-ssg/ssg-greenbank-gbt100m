@@ -9,8 +9,10 @@ website:
   search: false
   navbar:
     left:
-      - href: catalog.qmd
-        text: Catalog
+      - href: videos.qmd
+        text: Videos
+      - href: projects.qmd
+        text: Projects
 
 format:
   html:

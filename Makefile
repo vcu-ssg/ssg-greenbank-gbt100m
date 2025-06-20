@@ -23,6 +23,13 @@ DJI_0149.skip = 10
 DJI_0150.skip = 30
 small_example.skip = 0
 
+DJI_0145.rotate = 0
+DJI_0146.rotate = 0
+DJI_0149.rotate = 90
+DJI_0150.rotate = 90
+small_example.rotate = -90
+
+
 # Desired range of fps values.  0.20 -> 1 frame every 5 seconds.
 fps-roots := 0.20 0.40 0.60 0.80 1.00 1.20 1.40 1.60 1.80 2.00 3.00 4.00 5.00
 
@@ -42,6 +49,7 @@ filter-roots := filtered greyscale
 
 videos-folder = ./videos
 projects-folder = ./projects
+thumbvids-folder = ./projects/thumbvids
 
 poetry-base = poetry run python scripts/cli.py
 #poetry-base = echo
@@ -151,7 +159,30 @@ define recipe-gsplat-folder2
 	--sh_degree=3
 endef
 
+
+# projects/thumbvids/DJI_0150-thumb.MP4 : videos/DJI_0150.MP4
+define recipe-thumbvid-folder
+	mkdir -p $(thumbvids-folder)
+
+	# Set ROT := the .rotate value (if any)
+	$(eval ROT := $(or $($(call ELEM3,$(@),3).rotate),0))
+
+	ffmpeg  \
+		-ss $(or $($(call ELEM3,$(@),3).skip),0) \
+		-display_rotation $(ROT) \
+		-i $(firstword $(^)) \
+		-vf "scale=iw/10:ih/10,setpts=PTS/4" \
+		-an -c:v libx264 \
+		-preset slow -crf 28 -b:v 500k \
+		-threads 16 \
+		$(@)
+endef
+
+
 # Key macros - this is where all the folder wiring happens!
+
+thumbvids : $(foreach video,$(video-roots),$(thumbvids-folder)/$(video)-thumb.MP4)
+$(foreach video,$(video-roots),$(eval $(thumbvids-folder)/$(video)-thumb.MP4 : $(videos-folder)/$(video).MP4 ; $$(recipe-thumbvid-folder)))
 
 # the base roots:  png_base_0.60_900
 base-roots := $(foreach filter,base,$(foreach format,$(format-roots),$(foreach fps,$(fps-roots),$(foreach width,$(width-roots),$(format)_$(filter)_$(fps)_$(width)))))
@@ -229,6 +260,9 @@ define recipe-remove-folders
 		rm -rf $$matches; \
 	fi
 endef
+
+clean-thumbvids :
+	rm $(thumbvids-folder)/*.MP4
 
 ## Interactive shell targets for debugging
 

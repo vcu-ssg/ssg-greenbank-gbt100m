@@ -18,6 +18,8 @@ plotly = "^6.1.2"
 pandas = "^2.3.0"
 open3d = "^0.19.0"
 pymeshlab = "^2023.12.post3"
+pymediainfo = "^7.0.1"
+tabulate = "^0.9.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

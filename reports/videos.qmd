@@ -1,0 +1,258 @@
+---
+title: Base project videos
+---
+
+```{=html}
+
+<style>
+/* General table styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table.table tbody td {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+table.table tbody tr {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Styles for the overall column container (the div.columns with class="videocell") */
+.columns.videocell {
+    display: flex;
+    align-items: stretch; /* Makes columns match height */
+}
+
+/* Styles for the individual column containing the video */
+.columns.videocell > .column.videocell {
+    position: relative;
+    overflow: hidden;
+    padding: 0;
+    background-color: transparent;
+
+    max-height: 400px; /* Capped height for the video column */
+
+    /* Make this column a flex container to CENTER video content within its height */
+    display: flex;
+    flex-direction: column;
+    align-items: center;   /* Center horizontally within the column */
+    justify-content: center; /* Center vertically within the column */
+}
+
+/* Styles for the .quarto-video wrapper div */
+.column.videocell .quarto-video {
+    width: 100%;
+    height: 100%; /* Take up the full available height from the column (up to max-height) */
+    display: flex; /* Use flexbox to center video within this container */
+    justify-content: center; /* Center horizontally (for portrait videos that are narrower) */
+    align-items: center;   /* Center vertically (for landscape videos that are shorter) */
+    background-color: transparent;
+    overflow: hidden;
+}
+
+/* Styles for the main Video.js player container */
+/* This is the div with class="video-js vjs-default-skin vjs-fluid" */
+.video-js.vjs-default-skin {
+    background-color: transparent !important;
+    width: 100% !important; /* Player fills the width of .quarto-video */
+    height: 100% !important; /* Player fills the height of .quarto-video (which is max-height constrained) */
+
+    /* Override vjs-fluid's aspect ratio padding hack */
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+
+    /* Ensure flex container properties to center the video content */
+    display: flex !important;
+    flex-direction: column !important; /* Stack actual video and controls */
+    align-items: center !important;   /* Center content (video) horizontally */
+    justify-content: center !important; /* Center content (video) vertically */
+    overflow: hidden;
+}
+
+/* Target the vjs-tech element (the actual <video> tag inside Video.js) */
+.video-js .vjs-tech {
+    background-color: transparent !important;
+    height: 100% !important; /* Prioritize height: Take 100% of available height within the player */
+    width: auto !important;   /* Let width be determined by aspect ratio and height */
+    max-width: 100% !important; /* Ensure it doesn't exceed 100% of player width */
+    object-fit: contain !important; /* Maintain aspect ratio, scale down, show whole video */
+    margin: auto !important; /* Centers horizontally and vertically if space remains, due to flex parent */
+}
+
+/* Control bar specific styling for Video.js */
+.video-js .vjs-control-bar {
+    position: absolute !important;
+    bottom: 0 !important; /* <--- CHANGED: Float to the very BOTTOM of the player */
+    top: auto !important; /* <--- ADDED: Remove top constraint */
+    width: 100% !important;
+    z-index: 10;
+    background-color: rgba(0, 0, 0, 0.7); /* Visible background */
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transition: none !important;
+}
+
+/* Hide the control bar fade-out behavior */
+.video-js.vjs-user-inactive .vjs-control-bar {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transition: none !important;
+}
+
+/* Poster image styling */
+.video-js .vjs-poster {
+    background-size: contain !important;
+    background-position: center !important; /* <--- CHANGED: Center poster both ways */
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+}
+
+/* Optional: Table column styling to match video column height and align content to top */
+.columns.videocell > .column:first-child {
+    max-height: 400px; /* Match the video's max-height for consistent row height */
+    overflow-y: auto;  /* Add scrollbar if table content exceeds max-height */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* Align table content to the top */
+    justify-content: flex-start; /* Push table content to the top */
+}
+</style>
+
+```
+
+The videos below are used to see the various projects.
+
+
+```{python}
+#| echo : false
+#| output: asis
+
+
+from pathlib import Path
+from IPython.display import display, HTML
+import shutil
+from pymediainfo import MediaInfo
+import json
+import pandas as pd
+from datetime import datetime
+import zoneinfo 
+import tabulate
+
+def extract_first(other_field, fallback=None):
+    return other_field[0] if isinstance(other_field, list) and other_field else fallback
+
+def convert_encoded_date_to_local(date_str, tz_name="America/New_York"):
+    """
+    Convert 'YYYY-MM-DD HH:MM:SS UTC' to local date and time strings.
+    Returns (local_date, local_time)
+    """
+    try:
+        # Parse and convert from UTC
+        dt_utc = datetime.strptime(date_str.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S")
+        dt_utc = dt_utc.replace(tzinfo=zoneinfo.ZoneInfo("UTC"))
+        dt_local = dt_utc.astimezone(zoneinfo.ZoneInfo(tz_name))
+
+        local_date = dt_local.strftime("%Y-%m-%d")
+        local_time = dt_local.strftime("%I:%M:%S %p %Z")
+        return local_date, local_time
+    except Exception:
+        return None, None
+
+def extract_video_info(path: Path) -> dict:
+    media_info = MediaInfo.parse(path)
+    general = next((t for t in media_info.tracks if t.track_type == "General"), None)
+    video = next((t for t in media_info.tracks if t.track_type == "Video"), None)
+
+    # Parse and convert encoded date
+    raw_encoded_date = getattr(general, "encoded_date", None)
+    local_date,local_time = convert_encoded_date_to_local(raw_encoded_date) if raw_encoded_date else None
+
+    return {
+        "Name": path.name,
+        "Format": getattr(general, "format", None),
+        "Duration": extract_first(getattr(general, "other_duration", None),
+                                  f"{round(float(general.duration)/1000, 2)} s" if general and general.duration else None),
+        "Resolution": f"{video.width}x{video.height}" if video and video.width and video.height else None,
+        "Codec": getattr(video, "codec_id", None),
+        "Bitrate": extract_first(getattr(video, "other_bit_rate", None),
+                                 f"{round(float(video.bit_rate)/1000, 2)} kbps" if video and video.bit_rate else None),
+        "Frame rate": extract_first(getattr(video, "other_frame_rate", None),
+                                    video.frame_rate if video and video.frame_rate else None),
+        "Size": extract_first(getattr(general, "other_file_size", None)),
+        "Date Recorded": local_date,
+        "Time Recorded": local_time
+    }
+
+thumbvids_dir = Path("../projects/thumbvids")
+output_dir = Path("../docs/data")
+output_dir.mkdir(parents=True, exist_ok=True)
+
+videos = sorted(thumbvids_dir.glob("*.MP4"))
+
+html_blocks = []
+
+for video in videos:
+
+    dest = Path("../docs/data") / video.name
+    shutil.copy( video, dest )
+
+    original_video_path = Path("../videos") / video.name.replace("-thumb","")
+
+    media_info = MediaInfo.parse(original_video_path)
+    video_info = [track.to_data() for track in media_info.tracks]
+ 
+    if 0:
+        video_info = [track.to_data() for track in media_info.tracks]
+        description = json.dumps( video_info, indent=2 )
+    else:
+        video_info = extract_video_info( original_video_path )
+        description = json.dumps( video_info,indent=2)
+        df = pd.DataFrame(video_info.items(), columns=["Property", "Value"])
+        description = df.to_markdown( index=False )
+
+    video_link = Path("./data") / video.name
+    html_blocks.append(f"""
+
+## Video: {video.name.replace("-thumb","")}
+
+Below are key video properties and a thumbvid.  The thumbvid size is significantly
+reduced and the speed incrased.  The purpose of the thumbvid is to get an idea of what is being
+analyzed. A pre-specified block of time has been skipped from the beginning of the thumbvid, too.
+
+:::: {{.columns class="videocell"}}
+
+::: {{.column width=50%}}
+
+{description}
+
+:::
+
+
+::: {{.column width=50% class="videocell" }}
+
+{{{{< video
+{video_link}
+autoplay loop muted playsinline
+>}}}}
+
+:::
+
+::::
+
+""")
+
+print( "\n".join(html_blocks))
+
+```
