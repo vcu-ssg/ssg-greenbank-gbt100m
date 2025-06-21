@@ -106,6 +106,13 @@ def run_colmap_model_analyzer(model_folder_in_container, stats_file, elapsed_tim
     scenario_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(model_folder_in_container))))
     model_id = os.path.basename( model_folder_in_container )
     
+    stats_file = Path(stats_file)
+    stats_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    logger.info(f"Model folder in container: {model_folder_in_container}")
+    logger.info(f"Scenario name: {scenario_name}")
+    logger.info(f"Model id: {model_id}")
+    
     cmd = DOCKER_COMPOSE_PREFIX + [
         "run", "--rm",
         "--user", f"{os.getuid()}:{os.getgid()}",

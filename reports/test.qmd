@@ -65,7 +65,7 @@ format:
 import shutil
 import pandas as pd
 
-root = "DJI_0145-jpg_base_1.60_1600"
+root = "DJI_0145-png_base_1.60_1600"
 
 input  = f"../projects/{root}/colmap/sparse/0.ply"
 model1 = f"../docs/data/{root}-0.ply"
@@ -75,8 +75,12 @@ input  = f"../projects/{root}/colmap/sparse/0_clean.ply"
 model2 = f"../docs/data/{root}-0_clean.ply"
 x = shutil.copyfile( input, model2 )
 
-input = f"../projects/{root}/images/{root}_00001.jpg"
-initial_image = f"../docs/data/{root}-image.jpg"
+input  = f"../projects/{root}/colmap/sparse/0_clean2.ply"
+model3 = f"../docs/data/{root}-0_clean2.ply"
+x = shutil.copyfile( input, model3 )
+
+input = f"../projects/{root}/images/{root}_00001.png"
+initial_image = f"../docs/data/{root}-image.png"
 x = shutil.copyfile( input, initial_image )
 
 
@@ -112,6 +116,14 @@ data = [
 df = pd.DataFrame(data, columns=["Parameter", "Value"])
 html_table2 = df.to_html(index=False, classes="stats-table", border=0)
 
+data = [
+  ["--min-track-len",3],
+  ["--max-reproj-error",2.0],
+	["--min-tri-angle",3.0]
+]
+df = pd.DataFrame(data, columns=["Parameter", "Value"])
+html_table3 = df.to_html(index=False, classes="stats-table", border=0)
+
 ```
 
 
@@ -135,6 +147,23 @@ print(f"""
 </div>
 </div>
 
+<hr/>
+
+<div class="viewer-row">
+<div class="viewer-block">
+<h3>Cleaned model</h3>
+<div id="viewer3" class="threejs-container"></div>
+<div>{html_table2}</div>
+</div>
+<div class="viewer-block">
+<h3>Cleaned2 model</h3>
+<div id="viewer4" class="threejs-container"></div>
+<div>{html_table3}</div>
+</div>
+</div>
+
+<hr/>
+
 <div class="viewer-row">
 <div class="viewer-block">
 <h3>Stats</h3>
@@ -142,7 +171,7 @@ print(f"""
 </div>
 <div class="viewer-block">
 <h3>Initial photo</h3>
-<div class="threejs-container"><img src="./data/{root}-image.jpg"/></div>
+<div class="threejs-container"><img src="./data/{root}-image.png"/></div>
 </div>
 </div>
 
@@ -155,7 +184,10 @@ print(f"""
 <script type="module">
   import { loadPLYViewer } from "./js/ply_viewer.js";
 
-  loadPLYViewer("viewer1", "./data/DJI_0145-jpg_base_1.60_1600-0.ply");
-  loadPLYViewer("viewer2", "./data/DJI_0145-jpg_base_1.60_1600-0_clean.ply");
+  loadPLYViewer("viewer1", "./data/DJI_0145-png_base_1.60_1600-0.ply");
+  loadPLYViewer("viewer2", "./data/DJI_0145-png_base_1.60_1600-0_clean.ply");
+  loadPLYViewer("viewer3", "./data/DJI_0145-png_base_1.60_1600-0_clean.ply");
+  loadPLYViewer("viewer4", "./data/DJI_0145-png_base_1.60_1600-0_clean2.ply");
+
 </script>
 ```

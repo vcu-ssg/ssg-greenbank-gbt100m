@@ -11,7 +11,7 @@
 # They may NOT have a dash "-" in their name, use an underscore.
 # Leave off the .MP4 extension (assumes CAPS for MP4)
 # Videos must be stored in ./videos folder.  They will NOT be pushed to repo.
-video-roots := DJI_0145 DJI_0146 DJI_0149 DJI_0150 small_example
+video-roots := DJI_0145 DJI_0146 DJI_0149 DJI_0150
 
 # For every video listed in video-roots, there should be a .skip variable as shown below.
 # This represents how many seconds to skip from the front of the video prior to pulling frames.
@@ -135,6 +135,13 @@ define recipe-colmap-clean2-folder
 	--min-tri-angle=3.0
 endef
 
+#  projects/DJI_0145-png_base_1.00_1600/colmap/stats/model_analyzer-sparse-0.json : projects/DJI_0145-png_base_1.00_1600/colmap/sparse/0 ; $(recipe-colmap-analyzer-folder)
+define recipe-colmap-analyzer-folder
+	poetry run python scripts/cli.py run-colmap-model-analyzer \
+	--input-model-folder=$(firstword $(^))  \
+	--output-stats-folder=$(@)
+endef
+
 # Apply gsplat to transform colmap folder to gsplat folder
 #   projects/DJI_0150-png_base_0.60_1600/gsplat : projects/DJI_0150-png_base_0.60_1600/colmap ; $(recipe-gsplat-folder)
 define recipe-gsplat-folder
@@ -230,12 +237,22 @@ colmap-clean-targets := $(foreach video,$(video-roots),$(foreach tag,$(base-root
 #$(info $(colmap-clean-targets))
 $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/colmap/sparse/0_clean : $(projects-folder)/$(video)-$(tag)/colmap ; $$(recipe-colmap-clean-folder)$(newline) )))
 
+# projects/DJI_0150-base_png_0.60_800/colmap/sparse/0_clean2
+colmap-clean2-targets := $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/colmap/sparse/0_clean2))
+#$(info $(colmap-clean2-targets))
+$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/colmap/sparse/0_clean2 : $(projects-folder)/$(video)-$(tag)/colmap ; $$(recipe-colmap-clean-folder)$(newline) )))
+
+
 # projects/DJI_0150-png_base_0.60_1600/gsplat
 gsplat-targets := $(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/gsplat))
-# projects/DJI_0145-base_png_1.00_900/gsplat : projects/DJI_0145-base_png_1.00_900/colmap/sparse/0_clean ; $(recipe-gsplat-folder)
-$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/gsplat : $(projects-folder)/$(video)-$(tag)/colmap/sparse/0_clean ; $$(recipe-gsplat-folder)$(newline))))
+# projects/DJI_0145-base_png_1.00_900/gsplat : projects/DJI_0145-base_png_1.00_900/colmap/sparse/0_clean2 ; $(recipe-gsplat-folder)
+$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/gsplat : $(projects-folder)/$(video)-$(tag)/colmap/sparse/0_clean2 ; $$(recipe-gsplat-folder)$(newline))))
 
 model-roots := 0 0_clean 0_clean2
+
+# projects/DJI_0150-png_base_0.60_1600/colmap/stats/model_analyzer-sparse-0_clean.json
+$(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/colmap/stats/model_analyzer-sparse-$(model).json : $(projects-folder)/$(video)-$(tag)/colmap/sparse/$(model) ; $$(recipe-colmap-analyzer-folder)$(newline)))))
+
 
 # projects/DJI_0150-png_base_0.60_1600/gsplat/0_clean
 gsplat-targets-2 := $(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/gsplat/$(model))))
@@ -264,6 +281,23 @@ endef
 clean-thumbvids :
 	rm $(thumbvids-folder)/*.MP4
 
+clean-stats :
+	find projects -mindepth 3 -maxdepth 3 -type d -name stats -exec rm -rf {} +
+
+refresh-stats:
+	@for d in $(shell find projects -mindepth 4 -maxdepth 4 -type d -path "*/colmap/sparse/*"); do \
+		base=$$(dirname $$d); \
+		suffix=$$(basename $$d); \
+		target=$${base%/sparse}/stats/model_analyzer-sparse-$$suffix.json; \
+		if [ ! -f "$$target" ]; then \
+			echo "Building $$target"; \
+			$(MAKE) "$$target"; \
+		else \
+			echo "Skipping $$target (already exists)"; \
+		fi; \
+	done
+
+
 ## Interactive shell targets for debugging
 
 container-roots := colmap gsplat openmvg openmvs
@@ -288,10 +322,9 @@ cuda-test:
 		'echo $$TORCH_CUDA_ARCH_LIST && python -c "import torch; print(torch.version.cuda, torch.cuda.get_device_properties(0))"'
 
 
-all-clean-colmaps : $(colmap-clean-targets)
+all-clean-colmaps : $(foreach video,DJI_0145,$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/colmap/sparse/0_clean2))
 
-test : \
-	all-clean-colmaps
-	projects/DJI_0145-jpg_base_0.20_1600/gsplat \
-	projects/DJI_0145-jpg_base_0.20_1600/gsplat/0 \
-	projects/DJI_0145-jpg_base_0.20_1600/gsplat/0_clean
+keepers := $(foreach video,$(video-roots),$(projects-folder)/$(video)-png_base_1.00_1600/gsplat/0_clean2)
+$(info $(keepers))
+
+all-keepers: $(keepers)

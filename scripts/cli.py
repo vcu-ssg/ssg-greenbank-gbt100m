@@ -153,6 +153,18 @@ def gsplat(scene, images_dir, sparse_dir, model_dir,iterations,sh_degree):
     """Run Gaussian Splatting training for a specific scene with provided paths."""
     gsplat_pipeline.run_gsplat_training(scene, images_dir, sparse_dir, model_dir,iterations,sh_degree)
 
+def ensure_absolute_path(input_model_folder):
+    if not input_model_folder.startswith("/"):
+        input_model_folder = "/" + input_model_folder
+    return input_model_folder
+
+@cli.command()
+@click.option("--input-model-folder", type=click.Path(exists=True, file_okay=False),help="Input model folder")
+@click.option("--output-stats-folder", type=click.Path(),help="Output stats folder")
+def run_colmap_model_analyzer(input_model_folder, output_stats_folder ):
+    """Run COLMAP pipeline on given image folder."""
+    from scripts.colmap_pipeline import run_colmap_model_analyzer
+    run_colmap_model_analyzer( ensure_absolute_path(input_model_folder), output_stats_folder, 0.0 )
 
 if __name__ == "__main__":
     cli()
