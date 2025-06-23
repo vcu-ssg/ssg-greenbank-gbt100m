@@ -126,7 +126,7 @@ def run_colmap_model_analyzer(model_folder_in_container, stats_file, elapsed_tim
         output = result.stderr
         
         video, config = scenario_name.split("-", 1)
-        format_, filter_, fps, max_dim = config.split("_")
+        format_, fps, max_dim, filter_ = config.split("_")
 
         stats = {
             "Scenario": scenario_name,
@@ -211,6 +211,7 @@ def run_colmap_pipeline(image_path, colmap_output_folder):
     os.makedirs(colmap_output_folder, exist_ok=True)
     sparse_folder = os.path.join(colmap_output_folder, "sparse")
     os.makedirs(sparse_folder, exist_ok=True)
+    
     stats_folder = os.path.join(colmap_output_folder,"stats")
     os.makedirs(stats_folder, exist_ok=True)
     stats_file = os.path.join(stats_folder, f"model_analyzer-sparse-0.json")

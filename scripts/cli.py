@@ -2,6 +2,9 @@ import click
 from scripts.extract_frames import extract_frames_from_file, extract_frames_from_folder, process_folder_with_convert, process_folder_with_convert_workers
 from scripts import colmap_pipeline, openmvg_pipeline, convert_matches_g_to_dot, gsplat_pipeline
 
+import torch
+from pathlib import Path
+
 @click.group()
 def cli():
     """GBT 3D Pipeline CLI"""
@@ -149,9 +152,9 @@ def colmap_model_cleaner(input_model_folder, output_model_folder, min_track_len,
 @click.option('--model-dir', required=True, type=click.Path(), help='Output directory for gsplat results')
 @click.option('--iterations', required=True, help='Iterations to gsplat')
 @click.option('--sh_degree', required=True, help='Spherical Harmonics degree. 0-none, 1-2 lower res, 3-4 higher res')
-def gsplat(scene, images_dir, sparse_dir, model_dir,iterations,sh_degree):
+def run_gsplat_pipeline(scene, images_dir, sparse_dir, model_dir,iterations,sh_degree):
     """Run Gaussian Splatting training for a specific scene with provided paths."""
-    gsplat_pipeline.run_gsplat_training(scene, images_dir, sparse_dir, model_dir,iterations,sh_degree)
+    gsplat_pipeline.run_gsplat_pipeline(scene, images_dir, sparse_dir, model_dir,iterations,sh_degree)
 
 def ensure_absolute_path(input_model_folder):
     if not input_model_folder.startswith("/"):
@@ -162,9 +165,69 @@ def ensure_absolute_path(input_model_folder):
 @click.option("--input-model-folder", type=click.Path(exists=True, file_okay=False),help="Input model folder")
 @click.option("--output-stats-folder", type=click.Path(),help="Output stats folder")
 def run_colmap_model_analyzer(input_model_folder, output_stats_folder ):
-    """Run COLMAP pipeline on given image folder."""
+    """Run COLMAP analyzer on folders.  Not necessary unless format of output has changed.  Pipeline calls it, too."""
     from scripts.colmap_pipeline import run_colmap_model_analyzer
     run_colmap_model_analyzer( ensure_absolute_path(input_model_folder), output_stats_folder, 0.0 )
+
+@cli.command()
+@click.option("--input-file", type=click.Path(exists=True, file_okay=True),help="Input .ply file")
+@click.option("--output-file", type=click.Path(),help="Output .splat file")
+def run_ply_to_splat_converter( input_file, output_file ):
+    """splat converter"""
+    from gsplat_pipeline import run_ply_to_splat_converter
+    run_ply_to_splat_converter( ensure_absolute_path(input_file), ensure_absolute_path(output_file) )
+
+
+
+@cli.command()
+@click.option('--input-file', type=click.Path(exists=True), help="input file")
+@click.option('--output-file', type=click.Path(), help="output file")
+@click.option('--zmin', type=float, default=None, help='Minimum Z coordinate to keep')
+@click.option('--zmax', type=float, default=None, help='Maximum Z coordinate to keep')
+@click.option('--min-opacity', type=float, default=0.0, help='Minimum opacity threshold')
+@click.option('--max-scale-x', type=float, default=None, help='Maximum X scale threshold')
+@click.option('--max-scale-y', type=float, default=None, help='Maximum Y scale threshold')
+@click.option('--max-scale-z', type=float, default=None, help='Maximum Z scale threshold')
+def run_splat_post_cleaner(input_file, output_file, zmin, zmax, min_opacity, max_scale_x, max_scale_y, max_scale_z):
+    """Filter a .splat file to remove foggy/outlier Gaussians by Z range, opacity, and scale."""
+
+    click.echo(f"Loading splat file: {input_file}")
+    state = torch.load(input_file,weights_only=False)
+
+    keep = torch.ones(state['means3D'].shape[0], dtype=torch.bool)
+
+    if zmin is not None or zmax is not None:
+        z = state['means3D'][:, 2]
+        if zmin is not None:
+            keep &= (z > zmin)
+        if zmax is not None:
+            keep &= (z < zmax)
+
+    if min_opacity > 0.0:
+        opacity = state['opacity']
+        keep &= (opacity >= min_opacity)
+
+    if any(val is not None for val in [max_scale_x, max_scale_y, max_scale_z]):
+        scales = state['scales']
+        if max_scale_x is not None:
+            keep &= (scales[:, 0] <= max_scale_x)
+        if max_scale_y is not None:
+            keep &= (scales[:, 1] <= max_scale_y)
+        if max_scale_z is not None:
+            keep &= (scales[:, 2] <= max_scale_z)
+
+    original_count = keep.numel()
+    kept_count = keep.sum().item()
+    click.echo(f"Filtering complete: Kept {kept_count} / {original_count} Gaussians")
+
+    for key in ['means3D', 'opacity', 'scales', 'colors_precomp', 'rotation']:
+        if key in state:
+            state[key] = state[key][keep]
+
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(state, output_file)
+    click.echo(f"Saved filtered splat to: {output_file}")
+
 
 if __name__ == "__main__":
     cli()

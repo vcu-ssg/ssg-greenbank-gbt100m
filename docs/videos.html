@@ -128,133 +128,6 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-
-<style>
-/* General table styling */
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-table.table tbody td {
-  padding-top: 2px;
-  padding-bottom: 2px;
-}
-
-table.table tbody tr {
-  margin-top: 0;
-  margin-bottom: 0;
-}
-
-/* Styles for the overall column container (the div.columns with class="videocell") */
-.columns.videocell {
-    display: flex;
-    align-items: stretch; /* Makes columns match height */
-}
-
-/* Styles for the individual column containing the video */
-.columns.videocell > .column.videocell {
-    position: relative;
-    overflow: hidden;
-    padding: 0;
-    background-color: transparent;
-
-    max-height: 400px; /* Capped height for the video column */
-
-    /* Make this column a flex container to CENTER video content within its height */
-    display: flex;
-    flex-direction: column;
-    align-items: center;   /* Center horizontally within the column */
-    justify-content: center; /* Center vertically within the column */
-}
-
-/* Styles for the .quarto-video wrapper div */
-.column.videocell .quarto-video {
-    width: 100%;
-    height: 100%; /* Take up the full available height from the column (up to max-height) */
-    display: flex; /* Use flexbox to center video within this container */
-    justify-content: center; /* Center horizontally (for portrait videos that are narrower) */
-    align-items: center;   /* Center vertically (for landscape videos that are shorter) */
-    background-color: transparent;
-    overflow: hidden;
-}
-
-/* Styles for the main Video.js player container */
-/* This is the div with class="video-js vjs-default-skin vjs-fluid" */
-.video-js.vjs-default-skin {
-    background-color: transparent !important;
-    width: 100% !important; /* Player fills the width of .quarto-video */
-    height: 100% !important; /* Player fills the height of .quarto-video (which is max-height constrained) */
-
-    /* Override vjs-fluid's aspect ratio padding hack */
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-
-    /* Ensure flex container properties to center the video content */
-    display: flex !important;
-    flex-direction: column !important; /* Stack actual video and controls */
-    align-items: center !important;   /* Center content (video) horizontally */
-    justify-content: center !important; /* Center content (video) vertically */
-    overflow: hidden;
-}
-
-/* Target the vjs-tech element (the actual <video> tag inside Video.js) */
-.video-js .vjs-tech {
-    background-color: transparent !important;
-    height: 100% !important; /* Prioritize height: Take 100% of available height within the player */
-    width: auto !important;   /* Let width be determined by aspect ratio and height */
-    max-width: 100% !important; /* Ensure it doesn't exceed 100% of player width */
-    object-fit: contain !important; /* Maintain aspect ratio, scale down, show whole video */
-    margin: auto !important; /* Centers horizontally and vertically if space remains, due to flex parent */
-}
-
-/* Control bar specific styling for Video.js */
-.video-js .vjs-control-bar {
-    position: absolute !important;
-    bottom: 0 !important; /* <--- CHANGED: Float to the very BOTTOM of the player */
-    top: auto !important; /* <--- ADDED: Remove top constraint */
-    width: 100% !important;
-    z-index: 10;
-    background-color: rgba(0, 0, 0, 0.7); /* Visible background */
-    display: flex !important;
-    justify-content: flex-start !important;
-    align-items: center !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    transition: none !important;
-}
-
-/* Hide the control bar fade-out behavior */
-.video-js.vjs-user-inactive .vjs-control-bar {
-    opacity: 1 !important;
-    visibility: visible !important;
-    transition: none !important;
-}
-
-/* Poster image styling */
-.video-js .vjs-poster {
-    background-size: contain !important;
-    background-position: center !important; /* <--- CHANGED: Center poster both ways */
-    width: 100% !important;
-    height: 100% !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-}
-
-/* Optional: Table column styling to match video column height and align content to top */
-.columns.videocell > .column:first-child {
-    max-height: 400px; /* Match the video's max-height for consistent row height */
-    overflow-y: auto;  /* Add scrollbar if table content exceeds max-height */
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start; /* Align table content to the top */
-    justify-content: flex-start; /* Push table content to the top */
-}
-</style>
-
 <p>The videos below are used to see the various projects.</p>
 <section id="video-dji_0145.mp4" class="level2">
 <h2 class="anchored" data-anchor-id="video-dji_0145.mp4">Video: DJI_0145.MP4</h2>
@@ -314,6 +187,20 @@ table.table tbody tr {
 </div><div class="column videocell" style="width:50%;">
 <div class="quarto-video"><video id="video_shortcode_videojs_video1" class="video-js vjs-default-skin vjs-fluid" controls="" preload="auto" data-setup="{}" title=""><source src="data/DJI_0145-thumb.MP4"></video></div>
 </div>
+</div>
+<div width="75%">
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Splat Files</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="./gsp/DJI_0145-png_1.00_1600_none-0-point_cloud.html">DJI_0145-png_1.00_1600_none-0-point_cloud</a></td>
+</tr>
+</tbody>
+</table>
 </div>
 </section>
 <section id="video-dji_0146.mp4" class="level2">
@@ -375,6 +262,20 @@ table.table tbody tr {
 <div class="quarto-video"><video id="video_shortcode_videojs_video2" class="video-js vjs-default-skin vjs-fluid" controls="" preload="auto" data-setup="{}" title=""><source src="data/DJI_0146-thumb.MP4"></video></div>
 </div>
 </div>
+<div width="75%">
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Splat Files</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="./gsp/DJI_0146-png_1.00_1600_none-0-point_cloud.html">DJI_0146-png_1.00_1600_none-0-point_cloud</a></td>
+</tr>
+</tbody>
+</table>
+</div>
 </section>
 <section id="video-dji_0149.mp4" class="level2">
 <h2 class="anchored" data-anchor-id="video-dji_0149.mp4">Video: DJI_0149.MP4</h2>
@@ -434,6 +335,20 @@ table.table tbody tr {
 </div><div class="column videocell" style="width:50%;">
 <div class="quarto-video"><video id="video_shortcode_videojs_video3" class="video-js vjs-default-skin vjs-fluid" controls="" preload="auto" data-setup="{}" title=""><source src="data/DJI_0149-thumb.MP4"></video></div>
 </div>
+</div>
+<div width="75%">
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Splat Files</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="./gsp/DJI_0149-png_1.00_1600_none-0-point_cloud.html">DJI_0149-png_1.00_1600_none-0-point_cloud</a></td>
+</tr>
+</tbody>
+</table>
 </div>
 </section>
 <section id="video-dji_0150.mp4" class="level2">
@@ -495,6 +410,20 @@ table.table tbody tr {
 <div class="quarto-video"><video id="video_shortcode_videojs_video4" class="video-js vjs-default-skin vjs-fluid" controls="" preload="auto" data-setup="{}" title=""><source src="data/DJI_0150-thumb.MP4"></video></div>
 </div>
 </div>
+<div width="75%">
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Splat Files</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="./gsp/DJI_0150-png_1.00_1600_none-0-point_cloud.html">DJI_0150-png_1.00_1600_none-0-point_cloud</a></td>
+</tr>
+</tbody>
+</table>
+</div>
 </section>
 <section id="video-small_example.mp4" class="level2">
 <h2 class="anchored" data-anchor-id="video-small_example.mp4">Video: small_example.MP4</h2>
@@ -554,6 +483,20 @@ table.table tbody tr {
 </div><div class="column videocell" style="width:50%;">
 <div class="quarto-video"><video id="video_shortcode_videojs_video5" class="video-js vjs-default-skin vjs-fluid" controls="" preload="auto" data-setup="{}" title=""><source src="data/small_example-thumb.MP4"></video></div>
 </div>
+</div>
+<div width="75%">
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Splat Files</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="./gsp/small_example-png_1.00_1600_none-0-point_cloud.html">small_example-png_1.00_1600_none-0-point_cloud</a></td>
+</tr>
+</tbody>
+</table>
 </div>
 
 

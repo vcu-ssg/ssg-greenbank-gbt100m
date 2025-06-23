@@ -74,6 +74,15 @@ RUN sed -i -E \
   echo "✅ Patched os.path.join(args.source_path, \"sparse\") in __init__.py"
 
 
+# Clone and install SpectacularAI point-cloud-tools
+RUN git clone https://github.com/SpectacularAI/point-cloud-tools.git /opt/point-cloud-tools && \
+    pip install -r /opt/point-cloud-tools/requirements.txt
+
+# Optional: Symlink convert.py into /usr/local/bin for easy use
+RUN ln -s /opt/point-cloud-tools/convert.py /usr/local/bin/convert-pointcloud && \
+    chmod +x /usr/local/bin/convert-pointcloud
+
+
 # Optional: Add non-root user
 RUN groupadd -g 1000 john && useradd -m -u 1000 -g 1000 john
 

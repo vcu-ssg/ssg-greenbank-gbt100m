@@ -2,6 +2,7 @@ import os
 import sys
 from scripts.utils import run_subprocess
 from loguru import logger
+from pathlib import Path
 
 def host_to_container_path(host_path: str) -> str:
     """Convert a host path like projects/project_name/xxx/... to container path /projects/project_name/xxx """
@@ -14,8 +15,24 @@ def host_to_container_path(host_path: str) -> str:
     rel_path = os.path.relpath(abs_host, abs_data_root)
     return os.path.join("/projects", rel_path)
 
+def run_ply_to_splat_converter( input_file, output_file ):
+    """  """
+    logger.info(f"📸 Input PLY file    : {input_file}")
+    logger.info(f"📈 Output SPLAT file : {output_file}")
 
-def run_gsplat_training(scene, images_dir, sparse_dir, model_dir, iterations=30000, sh_degree=3):
+    cmd = [
+        "gsplat",
+        "python", "/opt/point-cloud-tools/convert.py",
+        input_file,
+        output_file
+    ]
+
+#    cmd = ["gsplat","ls","/opt/point_cloud_tools"]
+    run_subprocess(cmd, f"gsplat converter")
+
+
+
+def run_gsplat_pipeline(scene, images_dir, sparse_dir, model_dir, iterations=30000, sh_degree=3):
     """ gaussian splatting training pipeline """
     
     logger.info(f"🟢 Running gsplat for {scene}")
@@ -64,3 +81,8 @@ def run_gsplat_training(scene, images_dir, sparse_dir, model_dir, iterations=300
     ]
 
     run_subprocess(cmd, f"gsplat [{scene}]")
+
+    point_cloud_file = Path(output_container) / f"point_cloud/iteration_{iterations}/point_cloud.ply"
+    splat_file = point_cloud_file.with_suffix( ".splat" )
+    
+    run_ply_to_splat_converter( str(point_cloud_file), str(splat_file) )
