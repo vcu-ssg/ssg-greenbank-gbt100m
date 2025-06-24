@@ -5,14 +5,12 @@ project:
   - js/
 
 website:
-  title: "today"
+  title: "Greenbank"
   search: false
   navbar:
     left:
       - href: videos.qmd
         text: Videos
-      - href: projects.qmd
-        text: Projects
 
 format:
   html:
