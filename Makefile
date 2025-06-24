@@ -429,13 +429,11 @@ build-reports: all-keeper-qmds
 	cd reports && poetry run quarto render
 
 
-define recipe-test-recipe
-	@if [ "$(firstword $(^))" = "" ]; then \
-		echo "Building base / test1"; \
-	else \
-		echo "Building $(firstword $^)"; \
-	fi
-	@echo second
-	@echo third
-endef
-
+source-images := $(foreach video,$(video-roots),$(projects-folder)/$(video)-png_1.00_1600_none/images/)
+#$(info $(source-images))
+combined-folder := projects/combined-png_1.00_1600_none/images
+combine-images:
+	mkdir -p $(combined-folder)
+	@for dir in $(source-images); do \
+		cp -Ru $$dir* $(combined-folder)/; \
+	done

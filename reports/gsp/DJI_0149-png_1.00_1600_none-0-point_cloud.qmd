@@ -67,8 +67,8 @@ print(f"""
 print(f"""
 
 <script type="module">
-  import {{ loadPLYViewer }} from "/js/ply_viewer.js";
-  import {{ loadSplatViewer }} from "/js/splat_viewer.js";
+  import {{ loadPLYViewer }} from "../js/ply_viewer.js";
+  import {{ loadSplatViewer }} from "../js/splat_viewer.js";
 
 
   loadSplatViewer("viewer1","{project_paths.splat_web_url}")

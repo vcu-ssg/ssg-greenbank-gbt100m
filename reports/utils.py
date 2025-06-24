@@ -14,34 +14,45 @@ class ProjectFilesAndPaths:
 
         #raise Exception( Path.cwd() )
         self.local_path = "../.."
-        #self.web_path = "."
+        self.web_path = ".."
         # video stuff
         self.video_name = Path(f"{str(self.root_name).split("-",1)[0] }-thumb.MP4")
         self.video_local_source = Path(f"{self.local_path}/projects/thumbvids") / self.video_name
-        self.video_web_url = Path(f"/data/thumbvids") / self.video_name
-        self.video_local_dest = Path(f"{self.local_path}/docs") / Path( f"./{str(self.video_web_url)}" )
+        self.video_web_url = Path(f"{self.web_path}/data/thumbvids") / self.video_name
+        self.video_local_dest = Path(f"{self.local_path}/docs") / Path( f"./data/thumbvids" ) / self.video_name
 
         #raise Exception( self.video_local_dest )
         
         self.video_local_dest.parent.mkdir(parents=True,exist_ok=True)
-        x = shutil.copyfile( str(self.video_local_source),str(self.video_local_dest) ) 
-
+        try:
+            x = shutil.copyfile( str(self.video_local_source),str(self.video_local_dest) ) 
+        except (FileNotFoundError, PermissionError, shutil.SameFileError) as e:
+            print(f"Error copying file: {e}")
+            x = None
+    
         # sparse point cloud PLY files
         self.sparse_local_source  = Path(f"{self.local_path}/projects/{self.root_name.parts[0]}/colmap/sparse/{self.root_name.parts[2]}.ply")
-        self.sparse_web_url = Path(f"/data") / self.root_name.parts[0] / self.sparse_local_source.name
-        self.sparse_local_dest = Path(f"{self.local_path}/docs") / Path( f"./{str(self.sparse_web_url)}")
+        self.sparse_web_url = Path(f"{self.web_path}/data") / self.root_name.parts[0] / self.sparse_local_source.name
+        self.sparse_local_dest = Path(f"{self.local_path}/docs/data") / self.root_name.parts[0] / self.sparse_local_source.name
         
         #raise Exception( self.sparse_local_dest )
 
         self.sparse_local_dest.parent.mkdir(parents=True,exist_ok=True)
-        x = shutil.copyfile( str(self.sparse_local_source), str(self.sparse_local_dest ))
-
+        try:
+            x = shutil.copyfile( str(self.sparse_local_source), str(self.sparse_local_dest ))
+        except (FileNotFoundError, PermissionError, shutil.SameFileError) as e:
+            print(f"Error copying file: {e}")
+            x = None
         # splat file
         self.splat_local_source  = Path(f"{self.local_path}/projects") / self.root_name / Path("iteration_30000/point_cloud.splat")
-        self.splat_web_url = Path(f"/data") / self.root_name.parts[0] / Path(f"{self.root_name.parts[2]}-{self.splat_local_source.name}")
-        self.splat_local_dest = Path(f"{self.local_path}/docs") / Path(f"./{str(self.splat_web_url)}")
-        x = shutil.copyfile( str( self.splat_local_source), str(self.splat_local_dest) )
-
+        self.splat_web_url = Path(f"{self.web_path}/data") / self.root_name.parts[0] / Path(f"{self.root_name.parts[2]}-{self.splat_local_source.name}")
+        self.splat_local_dest = Path(f"{self.local_path}/docs/data") / self.root_name.parts[0] / Path(f"{self.root_name.parts[2]}-{self.splat_local_source.name}")
+        try:
+            x = shutil.copyfile( str( self.splat_local_source), str(self.splat_local_dest) )
+        except (FileNotFoundError, PermissionError, shutil.SameFileError) as e:
+            print(f"Error copying file: {e}")
+            x = None
+            
     def __repr__(self):
         return f"<ProjectFilesAndPaths {self.root_name} at {self.project_folder}>"
     

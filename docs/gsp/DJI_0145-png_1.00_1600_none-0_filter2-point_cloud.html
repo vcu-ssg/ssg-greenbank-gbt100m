@@ -125,17 +125,17 @@ Sparse Point Cloud
 Initial video
 </h3>
 <div class="threejs-container">
-<video src="/data/thumbvids/DJI_0145-thumb.MP4" autoplay="" loop="" muted="" playsinline="">
+<video src="../data/thumbvids/DJI_0145-thumb.MP4" autoplay="" loop="" muted="" playsinline="">
 </video></div>
 </div>
 </div>
 <script type="module">
-  import { loadPLYViewer } from "/js/ply_viewer.js";
-  import { loadSplatViewer } from "/js/splat_viewer.js";
+  import { loadPLYViewer } from "../js/ply_viewer.js";
+  import { loadSplatViewer } from "../js/splat_viewer.js";
 
 
-  loadSplatViewer("viewer1","/data/DJI_0145-png_1.00_1600_none/0_filter2-point_cloud.splat")
-  loadPLYViewer("viewer2",  "/data/DJI_0145-png_1.00_1600_none/0_filter2.ply");
+  loadSplatViewer("viewer1","../data/DJI_0145-png_1.00_1600_none/0_filter2-point_cloud.splat")
+  loadPLYViewer("viewer2",  "../data/DJI_0145-png_1.00_1600_none/0_filter2.ply");
 
 </script>
 
