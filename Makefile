@@ -44,7 +44,7 @@ help:
 # They may NOT have a dash "-" in their name, use an underscore.
 # Leave off the .MP4 extension (assumes CAPS for MP4)
 # Videos must be stored in ./videos folder.  They will NOT be pushed to repo.
-video-roots := DJI_0145 DJI_0146 DJI_0149 DJI_0150 small_example
+video-roots := DJI_0145 DJI_0146 DJI_0149 DJI_0150
 
 # For every video listed in video-roots, there should be a .skip variable as shown below.
 # This represents how many seconds to skip from the front of the video prior to pulling frames.
@@ -419,18 +419,15 @@ define recipe-qmd-builder
 	sed -i "s|replace_qmd_name_here|$(call ELEM3,$(@),1)-$(call ELEM3,$(@),2)/gsplat/$(call ELEM3,$(@),3)/$(call ELEM2,$(call ELEM3,$(@),4),1)|g" reports/gsp/$@
 endef
 
-keeper-qmds := $(foreach video,$(video-roots),$(foreach model,0,$(foreach filter,point_cloud,$(video)-png_1.00_1600_none-$(model)-$(filter).qmd)))
+keeper-qmds := $(foreach video,$(video-roots),$(foreach model,$(model-roots),$(foreach filter,point_cloud,$(video)-png_1.00_1600_none-$(model)-$(filter).qmd)))
 #$(info $(keeper-qmds))
-$(foreach video,$(video-roots),$(foreach model,0,$(foreach filter,point_cloud,$(eval $(video)-png_1.00_1600_none-$(model)-$(filter).qmd : $(projects-folder)/$(video)-png_1.00_1600_none/gsplat/$(model)/$(filter) ; $$(recipe-qmd-builder)$(newline)))))
+$(foreach video,$(video-roots),$(foreach model,$(model-roots),$(foreach filter,point_cloud,$(eval $(video)-png_1.00_1600_none-$(model)-$(filter).qmd : $(projects-folder)/$(video)-png_1.00_1600_none/gsplat/$(model)/$(filter) ; $$(recipe-qmd-builder)$(newline)))))
 
 all-keeper-qmds : $(keeper-qmds)
 
 build-reports: all-keeper-qmds
 	cd reports && poetry run quarto render
 
-.PHONY : test0 relaxed
-test1 : test1 ; $(recipe-test-recipe)
-test2 : test1 ; $(recipe-test-recipe)
 
 define recipe-test-recipe
 	@if [ "$(firstword $(^))" = "" ]; then \
