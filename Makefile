@@ -160,40 +160,47 @@ endef
 
 
 # Apply colmap to transform images folder to colmap pointcloud folder
-#  projects/DJI_0145-base_png_1.00_900/colmap : projects/DJI_0145-base_png_1.00_900/images ; $(recipe-colmap-folder)
-## COLMAP will create this model in the sparse/0
-define recipe-colmap-folder
+
+#  projects/DJI_0145-png_1.00_900_none/colmap/0 : projects/DJI_0145-png_1.00_900_none/images 
+define recipe-colmap-folder-xxx
 	@if [ true ]; then \
 		echo "-------------------------------------------------------------------"; \
 		echo "Running COLMAP $(call ELEM5,$(@),2)"; \
 		echo "-------------------------------------------------------------------"; \
 	fi
-	$(poetry-base) run-colmap-pipeline-cli $(firstword $(^)) $(@)
+#	$(poetry-base) run-colmap-pipeline-cli $(firstword $(^)) $(@)
 endef
 
-#  projects/DJI_0145-base_png_1.00_900/colmap/sparse/0_clean : projects/DJI_0145-base_png_1.00_900/colmap ; $(recipe-colmap-clean-folder)
+#  projects/DJI_0145-png_1.00_900_none/colmap/0 : projects/DJI_0145-png_1.00_900_none/images 
+#  projects/DJI_0145-png_1.00_900_NONE/colmap/0_filter1 : projects/DJI_0145-png_1.00_900/colmap/0 
 
-define recipe-colmap-filters-folder
-	@if [ "$(call ELEM5,$(@),5)" != "0" ]; then \
+define recipe-colmap-folder
+	@if [ "$(call ELEM5,$(@),4)" != "0" ]; then \
 		echo "-------------------------------------------------------------------"; \
-		echo "Running applying COLMAP filter:  $(call ELEM5,$(@),5)"; \
+		echo "Running applying COLMAP filter:  $(call ELEM5,$(@),4)"; \
+		echo "-------------------------------------------------------------------"; \
+	else \
+		echo "-------------------------------------------------------------------"; \
+		echo "Running COLMAP $(call ELEM5,$(@),2)"; \
 		echo "-------------------------------------------------------------------"; \
 	fi
-	@if [ "$(call ELEM5,$(@),5)" = "0_filter1" ]; then \
+	@if [ "$(call ELEM5,$(@),4)" = "0" ]; then \
+		$(poetry-base) run-colmap-pipeline-cli --image-path=$(firstword $(^)) --output-model-path=$(@); \
+	elif [ "$(call ELEM5,$(@),4)" = "0_filter1" ]; then \
 		$(poetry-base) colmap-model-cleaner \
-		--input-model-folder=$(firstword $(^))/sparse/0 \
-		--output-model-folder=$(@) \
+		--input-model-folder=$(firstword $(^))/sparse \
+		--output-model-folder=$(@)/sparse/0 \
 		--min-track-len=5 \
 		--max-reproj-error=1.0 \
 		--min-tri-angle=5.0	; \
-	elif [ "$(call ELEM5,$(@),5)" = "0_filter2" ]; then \
+	elif [ "$(call ELEM5,$(@),4)" = "0_filter2" ]; then \
 		poetry run python scripts/cli.py colmap-model-cleaner \
-		--input-model-folder=$(firstword $(^))/sparse/0 \
-		--output-model-folder=$(@) \
+		--input-model-folder=$(firstword $(^))/sparse \
+		--output-model-folder=$(@)/sparse/0 \
 		--min-track-len=3 \
 		--max-reproj-error=2.0 \
 		--min-tri-angle=3.0 ; \
-	fi	
+	fi
 endef
 
 
@@ -272,7 +279,16 @@ define recipe-thumbvid-folder
 		$(@)
 endef
 
-
+# projects/DJI_0145-png_1.00_1600_none/mvs/0 : projects/DJI_0145-png_1.00_1600_none/colmap/sparse/0
+define recipe-openmvs-folder
+# output-folder: projects/DJI_0145-png_1.00_1600_none/mvs/0
+# sparse-model-folder: projects/DJI_0145-png_1.00_1600_none/colmap/sparse/0
+# image-folder: projects/DJI_0145-png_1.00_1600_none/images
+	$(poetry-base) run-openmvs-pipeline \
+	--image-folder $(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/images \
+	--sparse-model-folder $(firstword $(^)) \
+	--mvs-output-folder $(@)
+endef
 
 # Key macros - this is where all the folder wiring happens!
 
@@ -298,17 +314,23 @@ $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(eval $(projects-fo
 # projects/DJI_0150-base_png_0.60_800/colmap
 colmap-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(projects-folder)/$(video)-$(base)/colmap))
 #$(info $(colmap-targets))
-$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(eval $(projects-folder)/$(video)-$(base)/colmap : $(projects-folder)/$(video)-$(base)/images ; $$(recipe-colmap-folder)$(newline))))
+
 
 
 # COLMAP FILTERED SPARSE MODEL
-# projects/DJI_0150-base_png_0.60_800/colmap/sparse/0
-# projects/DJI_0150-base_png_0.60_800/colmap/sparse/0_filter1
-# projects/DJI_0150-base_png_0.60_800/colmap/sparse/0_filter2
+# projects/DJI_0150-png_0.60_800_none/colmap/0
+# projects/DJI_0150-png_0.60_800_none/colmap/0_filter1
+# projects/DJI_0150-png_0.60_800_none/colmap/0_filter2
 #
-colmap-sparse-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(projects-folder)/$(video)-$(base)/colmap/sparse/$(model))))
+
+colmap-base := 0
+colmap-filters := 0_filter1 0_filter2
+colmap-roots := $(colmap-base) $(colmap-filters)
+
+colmap-sparse-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(colmap-base) $(colmap-filters),$(projects-folder)/$(video)-$(base)/colmap/$(model))))
 #$(info $(colmap-sparse-targets))
-$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(eval $(projects-folder)/$(video)-$(base)/colmap/sparse/$(model) : $(projects-folder)/$(video)-$(base)/colmap ; $$(recipe-colmap-filters-folder)$(newline)))))
+$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(colmap-roots),$(eval $(projects-folder)/$(video)-$(base)/colmap/$(model) : $(projects-folder)/$(video)-$(base)/$(if $(filter 0,$(model)),images,colmap/0) ; $$(recipe-colmap-folder)$(newline)))))
+#$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(colmap-filters)),$(eval $(projects-folder)/$(video)-$(base)/colmap/$(model) : $(projects-folder)/$(video)-$(base)/colmap ; $$(recipe-colmap-folder)$(newline)))))
 
 # Not really necessary unless you want to rebuild ALL stats, for example, if you change formats.
 # projects/DJI_0150-png_base_0.60_1600/colmap/stats/model_analyzer-sparse-0_clean.json
@@ -340,6 +362,35 @@ $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(mo
 	$(projects-folder)/$(video)-$(base)/gsplat/$(model) ; \
 	$$(recipe-gsplat-post-filter)$(newline) )))))
 	
+
+	
+# MVS from COLMAP models
+# projects/DJI_0150-png_0.60_1600_none/mvs
+# projects/DJI_0150-png_0.60_1600_none/mvs/0
+# projects/DJI_0150-png_0.60_1600_none/mvs/0/0_filter1
+mvs-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(projects-folder)/$(video)-$(base)/mvs))
+# projects/DJI_0145-base_png_1.00_900/gsplat : projects/DJI_0145-base_png_1.00_900/colmap/sparse/0 ; $(recipe-gsplat-folder)
+$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(eval $(projects-folder)/$(video)-$(base)/mvs : $(projects-folder)/$(video)-$(base)/mvs/0 ; $(newline))))
+#
+mvs-targets-2 := $(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/mvs/$(model))))
+# projects/DJI_0145-base_png_1.00_900/mvs/0_clean : projects/DJI_0145-base_png_1.00_900/colmap/sparse/0_clean ; $(recipe-openmvs-folder)
+$(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(eval $(projects-folder)/$(video)-$(base)/mvs/$(model) : $(projects-folder)/$(video)-$(base)/colmap/$(model) ; $$(recipe-openmvs-folder)$(newline)))))
+
+
+# FILTER THE SPLATS
+# projects/DJI_0150-png_0.60_1600_none/gsplat/0/point_cloud : projects/DJI_0150-png_0.60_1600_none/gsplat/0
+# projects/DJI_0150-png_0.60_1600_none/gsplat/0/sfilt1 : projects/DJI_0150-png_0.60_1600_none/gsplat/0
+# projects/DJI_0150-png_0.60_1600_none/gsplat/0_clean/sfilt2 : projects/DJI_0150-png_0.60_1600_none/gsplat/0/ iteration_30000/point_cloud.ply
+
+mvs-filter-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(foreach filter,$(splat-filter-roots),$(projects-folder)/$(video)-$(base)/mvs/$(model)/$(filter)))))
+#gsplat-filter-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(projects-folder)/$(video)-$(base)/gsplat))
+#$(info $(gsplat-filter-targets))
+$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(foreach filter,$(splat-filter-roots), \
+	$(eval $(projects-folder)/$(video)-$(base)/mvs/$(model)/$(filter) : \
+	$(projects-folder)/$(video)-$(base)/mvs/$(model) ; \
+	$$(recipe-mvs-post-filter)$(newline) )))))
+
+
 
 # Targets for cleaning folders
 

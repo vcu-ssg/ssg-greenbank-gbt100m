@@ -1,6 +1,6 @@
 import click
 from scripts.extract_frames import extract_frames_from_file, extract_frames_from_folder, process_folder_with_convert, process_folder_with_convert_workers
-from scripts import colmap_pipeline, openmvg_pipeline, convert_matches_g_to_dot, gsplat_pipeline
+from scripts import colmap_pipeline, openmvg_pipeline, convert_matches_g_to_dot, gsplat_pipeline, openmvs_pipeline
 
 import torch
 from pathlib import Path
@@ -115,12 +115,12 @@ def convert_images(input_folder, output_folder, sharpen, contrast, greyscale, cr
 
 
 @cli.command()
-@click.argument("image_path", type=click.Path(exists=True, file_okay=False))
-@click.argument("colmap_output_folder", type=click.Path())
-def run_colmap_pipeline_cli(image_path, colmap_output_folder):
+@click.option("--image-path", type=click.Path(exists=True, file_okay=False),help="Image folder")
+@click.option("--output-model-path", type=click.Path(),help="colmap output folder")
+def run_colmap_pipeline_cli(image_path, output_model_path):
     """Run COLMAP pipeline on given image folder."""
     from scripts.colmap_pipeline import run_colmap_pipeline
-    run_colmap_pipeline(image_path, colmap_output_folder)
+    run_colmap_pipeline(image_path, output_model_path)
 
 
 @cli.command()
@@ -227,6 +227,20 @@ def run_splat_post_cleaner(input_file, output_file, zmin, zmax, min_opacity, max
     output_file.parent.mkdir(parents=True, exist_ok=True)
     torch.save(state, output_file)
     click.echo(f"Saved filtered splat to: {output_file}")
+
+
+@cli.command()
+@click.option("--image-folder", required=True, type=click.Path(exists=True, file_okay=False),
+              help="Path to undistorted images folder (usually output of COLMAP undistorter)")
+@click.option("--sparse-model-folder", required=True, type=click.Path(exists=True, file_okay=False),
+              help="Path to COLMAP sparse model folder (e.g., sparse/0 or sparse/0_filter1)")
+@click.option("--mvs-output-folder", required=True, type=click.Path(file_okay=False),
+              help="Output directory for OpenMVS intermediate and final files")
+def run_openmvs_pipeline(image_folder, sparse_model_folder, mvs_output_folder):
+    """Run full OpenMVS pipeline and export web-ready GLB mesh."""
+    from scripts.openmvs_pipeline import mvs_pipeline
+    mvs_pipeline(image_folder, sparse_model_folder, mvs_output_folder)
+
 
 
 if __name__ == "__main__":
