@@ -242,6 +242,31 @@ def run_openmvs_pipeline(image_folder, sparse_model_folder, mvs_output_folder):
     mvs_pipeline(image_folder, sparse_model_folder, mvs_output_folder)
 
 
+@cli.command()
+@click.option("--input-file", required=True, type=click.Path(exists=True), help="Input mesh file (.ply)")
+@click.option("--output-file", required=True, type=click.Path(), help="Output cleaned mesh file")
+@click.option("--min-component-diag", default=0.2, type=float, help="Minimum component diagonal to keep")
+@click.option("--recompute-normals/--no-recompute-normals", default=True, help="Recompute normals for the mesh")
+@click.option("--k-neighbors", default=12, type=int, help="Number of neighbors for normal estimation")
+@click.option("--remove-duplicates/--no-remove-duplicates", default=True, help="Remove duplicate vertices")
+@click.option("--remove-unref/--no-remove-unref", default=True, help="Remove unreferenced vertices")
+@click.option("--remove-zero-area/--no-remove-zero-area", default=True, help="Remove zero area faces")
+@click.option("--binary/--ascii", default=True, help="Save mesh in binary format (default) or ASCII")
+def clean_dense_mesh_cmd(input_file, output_file, min_component_diag, recompute_normals, k_neighbors,
+                         remove_duplicates, remove_unref, remove_zero_area, binary):
+    """Clean a dense mesh with PyMeshLab"""
+    from scripts.pymeshlab_utils import clean_dense_mesh
+    clean_dense_mesh(
+        input_mesh=Path(input_file),
+        output_mesh=Path(output_file),
+        min_component_diag=min_component_diag,
+        recompute_normals=recompute_normals,
+        k_neighbors=k_neighbors,
+        remove_duplicates=remove_duplicates,
+        remove_unref=remove_unref,
+        remove_zero_area=remove_zero_area,
+        binary=binary
+    )
 
 if __name__ == "__main__":
     cli()

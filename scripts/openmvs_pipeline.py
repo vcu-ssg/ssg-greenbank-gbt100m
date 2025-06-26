@@ -3,6 +3,8 @@ import time
 from pathlib import Path
 from scripts.utils import run_subprocess
 from loguru import logger
+from scripts.pymeshlab_utils import clean_dense_mesh
+
 
 def host_to_container_path(host_path):
     if not os.path.abspath(host_path).startswith(os.path.abspath("projects")):
@@ -11,12 +13,19 @@ def host_to_container_path(host_path):
 
 
 def run_interface_colmap(input_folder, output_mvs_file, image_folder):
+
+    logger.info("🔧 Running InterfaceCOLMAP with the following arguments:")
+    logger.info(f"  📂 Input COLMAP folder (-i): {input_folder}")
+    logger.info(f"  📄 Output MVS file     (-o): {output_mvs_file}")
+    logger.info(f"  🗂️ image foldery   (--image-folder): {image_folder}")
+
     run_subprocess([
         "openmvs",
         "bin/InterfaceCOLMAP",
         "-i", input_folder,
         "-o", output_mvs_file,
-        "-w", image_folder  # workspace root (needed for images)
+        "-w", str(Path(output_mvs_file).parent),
+        "--image-folder", image_folder  # workspace root (needed for images)
     ], "OpenMVS: InterfaceCOLMAP")
 
 def run_densify_point_cloud(mvs_file, image_folder):
@@ -24,21 +33,29 @@ def run_densify_point_cloud(mvs_file, image_folder):
         "openmvs",
         "bin/DensifyPointCloud",
         mvs_file,
-        "--working-folder", image_folder
+        "--working-folder", str(Path(mvs_file).parent),
+        "-v","5",
+        "--cuda-device","-1"
     ], "OpenMVS: DensifyPointCloud")
 
 def run_reconstruct_mesh(mvs_file):
     run_subprocess([
         "openmvs",
         "bin/ReconstructMesh",
-        mvs_file
+        mvs_file,
+        "--working-folder", str(Path(mvs_file).parent),
+        "-v","5",
+        "--cuda-device","-1"
     ], "OpenMVS: ReconstructMesh")
 
 def run_refine_mesh(mvs_file):
     run_subprocess([
         "openmvs",
         "bin/RefineMesh",
-        mvs_file
+        mvs_file,
+        "--working-folder", str(Path(mvs_file).parent),
+        "-v","5",
+        "--cuda-device","-1"
     ], "OpenMVS: RefineMesh")
 
 def run_texture_mesh(mvs_file, image_folder):
@@ -46,7 +63,7 @@ def run_texture_mesh(mvs_file, image_folder):
         "openmvs",
         "bin/TextureMesh",
         mvs_file,
-        "--working-folder", image_folder
+        "--working-folder", str(Path(mvs_file).parent)
     ], "OpenMVS: TextureMesh")
 
 def convert_mesh_to_glb(input_mesh_path, output_glb_path):
@@ -54,7 +71,8 @@ def convert_mesh_to_glb(input_mesh_path, output_glb_path):
         "openmvs",
         "bin/meshlabserver",
         "-i", input_mesh_path,
-        "-o", output_glb_path
+        "-o", output_glb_path,
+        "--working-folder", str(Path(mvs_file).parent)
     ], "Meshlab: Convert to GLB")
 
 
@@ -89,17 +107,21 @@ def mvs_pipeline(image_folder, sparse_model_folder, mvs_output_folder):
     ply_file_container = host_to_container_path(str(ply_file))
     glb_file_container = host_to_container_path(str(glb_file))
 
-    logger.info("▶️ InterfaceCOLMAP")
-    run_interface_colmap(input_folder_container, mvs_file_container, image_folder_container)
 
-    logger.info("▶️ DensifyPointCloud")
-    run_densify_point_cloud(mvs_file_container, image_folder_container)
+    if 0:
+        logger.info("▶️ InterfaceCOLMAP")
+        run_interface_colmap(input_folder_container, mvs_file_container, image_folder_container)
 
-    logger.info("▶️ ReconstructMesh")
-    run_reconstruct_mesh(dense_mesh_file_container)
+        logger.info("▶️ DensifyPointCloud")
+        run_densify_point_cloud(mvs_file_container, image_folder_container)
 
-    logger.info("▶️ RefineMesh")
-    run_refine_mesh(mesh_refine_file_container)
+        logger.info("▶️ ReconstructMesh")
+        run_reconstruct_mesh(dense_mesh_file_container)
+
+        #logger.info("▶️ RefineMesh")
+        #run_refine_mesh(mesh_refine_file_container)
+
+    clean_dense_mesh( Path(mvs_file).parent / "scene_dense_mesh.ply", Path(mvs_file).parent / "scene_dense_mesh_refine.ply")
 
     logger.info("▶️ TextureMesh")
     run_texture_mesh(mesh_texture_file_container, image_folder_container)

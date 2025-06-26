@@ -212,20 +212,24 @@ define recipe-colmap-analyzer-folder
 endef
 
 # Apply gsplat to transform colmap folder to gsplat folder
-#   projects/DJI_0150-png_base_0.60_1600/gsplat : projects/DJI_0150-png_base_0.60_1600/colmap ; $(recipe-gsplat-folder)
+#   projects/DJI_0150-png_base_0.60_1600/gsplat/0/point_cloud : projects/DJI_0150-png_base_0.60_1600/colmap/0 ; $(recipe-gsplat-folder)
 define recipe-gsplat-folder
 	@if [ true ]; then \
 		echo "-------------------------------------------------------------------"; \
 		echo "Running GSPLAT: $(call ELEM5,$(@),2)"; \
+		echo " target: $(@)"; \
+		echo " Dependent: $(firstword $(^))"; \
 		echo "-------------------------------------------------------------------"; \
 	fi
+	@if [ "1" = "1" ]; then \
 	$(poetry-base) run-gsplat-pipeline \
 	--scene=$(call ELEM5,$(@),2) \
-	--images-dir=$(dir $(@))images \
-	--sparse-dir=$(firstword $(^)) \
+	--images-dir=$(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/images \
+	--sparse-dir=$(firstword $(^))/sparse \
 	--model-dir=$(@) \
 	--iterations=30000 \
-	--sh_degree=3
+	--sh_degree=3; \
+	fi
 endef
 
 # Apply gsplat to transform colmap folder to gsplat folder
@@ -279,15 +283,24 @@ define recipe-thumbvid-folder
 		$(@)
 endef
 
-# projects/DJI_0145-png_1.00_1600_none/mvs/0 : projects/DJI_0145-png_1.00_1600_none/colmap/sparse/0
+# projects/DJI_0145-png_1.00_1600_none/mvs/0 : projects/DJI_0145-png_1.00_1600_none/colmap/0
 define recipe-openmvs-folder
 # output-folder: projects/DJI_0145-png_1.00_1600_none/mvs/0
-# sparse-model-folder: projects/DJI_0145-png_1.00_1600_none/colmap/sparse/0
+# sparse-model-folder: projects/DJI_0145-png_1.00_1600_none/colmap/0
 # image-folder: projects/DJI_0145-png_1.00_1600_none/images
-	$(poetry-base) run-openmvs-pipeline \
-	--image-folder $(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/images \
-	--sparse-model-folder $(firstword $(^)) \
-	--mvs-output-folder $(@)
+	@if [ "1" = "1" ]; then \
+		echo "-------------------------------------------------------------------"; \
+		echo "Running MVS: $(call ELEM5,$(@),2)"; \
+		echo " Target: $(@)"; \
+		echo " Dependent: $(firstword $(^))"; \
+		echo "-------------------------------------------------------------------"; \
+	fi
+	@if [ "1" = "1" ]; then \
+		$(poetry-base) run-openmvs-pipeline \
+		--image-folder $(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/images \
+		--sparse-model-folder $(firstword $(^)) \
+		--mvs-output-folder $(@) ; \
+	fi
 endef
 
 # Key macros - this is where all the folder wiring happens!
@@ -323,13 +336,10 @@ colmap-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(
 # projects/DJI_0150-png_0.60_800_none/colmap/0_filter2
 #
 
-colmap-base := 0
-colmap-filters := 0_filter1 0_filter2
-colmap-roots := $(colmap-base) $(colmap-filters)
 
-colmap-sparse-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(colmap-base) $(colmap-filters),$(projects-folder)/$(video)-$(base)/colmap/$(model))))
+colmap-sparse-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(projects-folder)/$(video)-$(base)/colmap/$(model))))
 #$(info $(colmap-sparse-targets))
-$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(colmap-roots),$(eval $(projects-folder)/$(video)-$(base)/colmap/$(model) : $(projects-folder)/$(video)-$(base)/$(if $(filter 0,$(model)),images,colmap/0) ; $$(recipe-colmap-folder)$(newline)))))
+$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(eval $(projects-folder)/$(video)-$(base)/colmap/$(model) : $(projects-folder)/$(video)-$(base)/$(if $(filter 0,$(model)),images,colmap/0) ; $$(recipe-colmap-folder)$(newline)))))
 #$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(colmap-filters)),$(eval $(projects-folder)/$(video)-$(base)/colmap/$(model) : $(projects-folder)/$(video)-$(base)/colmap ; $$(recipe-colmap-folder)$(newline)))))
 
 # Not really necessary unless you want to rebuild ALL stats, for example, if you change formats.
@@ -338,16 +348,17 @@ $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(mo
 
 
 # GUASSIAN SPLAT the COLMAP models
-# projects/DJI_0150-png_base_0.60_1600/gsplat
-# projects/DJI_0150-png_base_0.60_1600/gsplat/0
-# projects/DJI_0150-png_base_0.60_1600/gsplat/0_filter1
-gsplat-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(projects-folder)/$(video)-$(base)/gsplat))
+# projects/DJI_0150-png_1.00_1600_none/gsplat/0
+# projects/DJI_0150-png_1.00_1600_none/gsplat/0/point_cloud
+# projects/DJI_0150-png_1.00_1600_none/gsplat/0_filter2/point_cloud
+
+
+gsplat-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(projects-folder)/$(video)-$(base)/gsplat/$(model))))
 # projects/DJI_0145-base_png_1.00_900/gsplat : projects/DJI_0145-base_png_1.00_900/colmap/sparse/0 ; $(recipe-gsplat-folder)
-$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(eval $(projects-folder)/$(video)-$(base)/gsplat : $(projects-folder)/$(video)-$(base)/gsplat/0 ; $(newline))))
-#
-gsplat-targets-2 := $(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/gsplat/$(model))))
-# projects/DJI_0145-base_png_1.00_900/gsplat/0_clean : projects/DJI_0145-base_png_1.00_900/colmap/sparse/0_clean ; $(recipe-gsplat-folder2)
-$(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(eval $(projects-folder)/$(video)-$(tag)/gsplat/$(model) : $(projects-folder)/$(video)-$(tag)/colmap/sparse/$(model) ; $$(recipe-gsplat-folder2)$(newline)))))
+$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots), \
+	$(eval $(projects-folder)/$(video)-$(base)/gsplat/$(model) : \
+	$(projects-folder)/$(video)-$(base)/gsplat/$(model)/point_cloud ; $(newline)))))
+
 
 # FILTER THE SPLATS
 # projects/DJI_0150-png_0.60_1600_none/gsplat/0/point_cloud : projects/DJI_0150-png_0.60_1600_none/gsplat/0
@@ -359,8 +370,8 @@ gsplat-filter-targets := $(foreach video,$(video-roots),$(foreach base,$(base-ro
 #$(info $(gsplat-filter-targets))
 $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(foreach filter,$(splat-filter-roots), \
 	$(eval $(projects-folder)/$(video)-$(base)/gsplat/$(model)/$(filter) : \
-	$(projects-folder)/$(video)-$(base)/gsplat/$(model) ; \
-	$$(recipe-gsplat-post-filter)$(newline) )))))
+	$(projects-folder)/$(video)-$(base)/colmap/$(model) ; \
+	$$(recipe-gsplat-folder)$(newline) )))))
 	
 
 	
@@ -488,3 +499,20 @@ combine-images:
 	@for dir in $(source-images); do \
 		cp -Ru $$dir* $(combined-folder)/; \
 	done
+
+
+test:
+	.PHONY: clean-dense-mesh
+
+scene := projects/DJI_0145-png_1.00_1600_none/mvs/0
+clean-dense-mesh:
+	poetry run python scripts/cli.py clean-dense-mesh \
+		--input-file=$(scene)/scene_dense_mesh.ply \
+		--output-file=$(scene)/scene_dense_mesh_cleaned.ply \
+		--min-component-diag=0.5 \
+		--k-neighbors=12 \
+		--recompute-normals \
+		--remove-duplicates \
+		--remove-unref \
+		--remove-zero-area \
+		--binary
