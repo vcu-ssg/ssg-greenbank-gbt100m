@@ -34,7 +34,7 @@ def run_densify_point_cloud(mvs_file, image_folder):
         "bin/DensifyPointCloud",
         mvs_file,
         "--working-folder", str(Path(mvs_file).parent),
-        "-v","5",
+        "-v","3",
         "--cuda-device","-1"
     ], "OpenMVS: DensifyPointCloud")
 
@@ -44,7 +44,7 @@ def run_reconstruct_mesh(mvs_file):
         "bin/ReconstructMesh",
         mvs_file,
         "--working-folder", str(Path(mvs_file).parent),
-        "-v","5",
+        "-v","3",
         "--cuda-device","-1"
     ], "OpenMVS: ReconstructMesh")
 
@@ -54,7 +54,7 @@ def run_refine_mesh(mvs_file):
         "bin/RefineMesh",
         mvs_file,
         "--working-folder", str(Path(mvs_file).parent),
-        "-v","5",
+        "-v","3",
         "--cuda-device","-1"
     ], "OpenMVS: RefineMesh")
 
@@ -63,7 +63,9 @@ def run_texture_mesh(mvs_file, image_folder):
         "openmvs",
         "bin/TextureMesh",
         mvs_file,
-        "--working-folder", str(Path(mvs_file).parent)
+        "--working-folder", str(Path(mvs_file).parent),
+        "-v","3",
+        "--cuda-device","-1"
     ], "OpenMVS: TextureMesh")
 
 def convert_mesh_to_glb(input_mesh_path, output_glb_path):
@@ -72,6 +74,8 @@ def convert_mesh_to_glb(input_mesh_path, output_glb_path):
         "bin/meshlabserver",
         "-i", input_mesh_path,
         "-o", output_glb_path,
+        "-v","3",
+        "--cuda-device","-1"
         "--working-folder", str(Path(mvs_file).parent)
     ], "Meshlab: Convert to GLB")
 
@@ -92,8 +96,8 @@ def mvs_pipeline(image_folder, sparse_model_folder, mvs_output_folder):
     # Host-side filenames
     mvs_file = os.path.join(mvs_output_folder, "scene.mvs")
     dense_mesh_file = mvs_file.replace(".mvs", "_dense.mvs")
-    mesh_refine_file = dense_mesh_file.replace("_dense.mvs", "_dense_mesh.mvs")
-    mesh_texture_file = mesh_refine_file.replace("_mesh.mvs", "_mesh_refine.mvs")
+    mesh_refine_file = dense_mesh_file.replace("_dense.mvs", "_dense.mvs")
+    mesh_texture_file = mesh_refine_file.replace("_mesh.mvs", "_mesh.mvs")
     ply_file = Path(mvs_output_folder) / "scene_dense_mesh_refine_texture.ply"
     glb_file = Path(mvs_output_folder) / "scene.glb"
 
@@ -108,7 +112,7 @@ def mvs_pipeline(image_folder, sparse_model_folder, mvs_output_folder):
     glb_file_container = host_to_container_path(str(glb_file))
 
 
-    if 0:
+    if 1:
         logger.info("▶️ InterfaceCOLMAP")
         run_interface_colmap(input_folder_container, mvs_file_container, image_folder_container)
 
@@ -121,10 +125,10 @@ def mvs_pipeline(image_folder, sparse_model_folder, mvs_output_folder):
         #logger.info("▶️ RefineMesh")
         #run_refine_mesh(mesh_refine_file_container)
 
-    clean_dense_mesh( Path(mvs_file).parent / "scene_dense_mesh.ply", Path(mvs_file).parent / "scene_dense_mesh_refine.ply")
+    #clean_dense_mesh( Path(mvs_file).parent / "scene_dense_mesh.ply", Path(mvs_file).parent / "scene_dense_mesh_refine.ply")
 
     logger.info("▶️ TextureMesh")
-    run_texture_mesh(mesh_texture_file_container, image_folder_container)
+    #run_texture_mesh(mesh_texture_file_container, image_folder_container)
 
     # Convert to GLB (check for host-side file existence)
     if ply_file.exists():

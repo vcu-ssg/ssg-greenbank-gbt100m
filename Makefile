@@ -500,15 +500,11 @@ combine-images:
 		cp -Ru $$dir* $(combined-folder)/; \
 	done
 
-
-test:
-	.PHONY: clean-dense-mesh
-
-scene := projects/DJI_0145-png_1.00_1600_none/mvs/0
+scenex := projects/DJI_0145-png_1.00_1600_none/mvs/0
 clean-dense-mesh:
 	poetry run python scripts/cli.py clean-dense-mesh \
-		--input-file=$(scene)/scene_dense_mesh.ply \
-		--output-file=$(scene)/scene_dense_mesh_cleaned.ply \
+		--input-file=$(scenex)/scene_dense_mesh.ply \
+		--output-file=$(scenex)/scene_dense_mesh_cleaned.ply \
 		--min-component-diag=0.5 \
 		--k-neighbors=12 \
 		--recompute-normals \
@@ -516,3 +512,62 @@ clean-dense-mesh:
 		--remove-unref \
 		--remove-zero-area \
 		--binary
+
+scene := projects/DJI_0145-png_1.00_1600_none
+
+step1 :
+	mkdir -p $(scene)/mvs/0/work
+	docker compose -f ./docker/docker-compose.yml \
+	run --rm --user 1000:1000 openmvs \
+	InterfaceCOLMAP \
+	-i /$(scene)/colmap/0 \
+	-o /$(scene)/mvs/0/scene.mvs \
+	-w /$(scene)/mvs/0/work \
+	--image-folder /$(scene)/../images
+
+step2 :
+	docker compose -f ./docker/docker-compose.yml \
+	run --rm --user 1000:1000 openmvs \
+	DensifyPointCloud \
+	-i /$(scene)/mvs/0/scene.mvs \
+	-o /$(scene)/mvs/0/scene_dense.mvs \
+	-w /$(scene)/mvs/0/work \
+	--cuda-device -1
+
+step3 :
+	docker compose -f ./docker/docker-compose.yml \
+	run --rm --user 1000:1000 openmvs \
+	ReconstructMesh \
+	-i /$(scene)/mvs/0/scene_dense.mvs \
+	-o /$(scene)/mvs/0/scene_dense_mesh.ply \
+	-w /$(scene)/mvs/0/work \
+	--cuda-device -1
+
+step4 :
+	docker compose -f ./docker/docker-compose.yml \
+	run --rm --user 1000:1000 openmvs \
+	RefineMesh \
+	-i /$(scene)/mvs/0/scene_dense.mvs \
+	-m /$(scene)/mvs/0/scene_dense_mesh.ply \
+	-o /$(scene)/mvs/0/scene_dense_mesh_refined.ply \
+	-w /$(scene)/mvs/0/work \
+	--cuda-device -1 \
+	--resolution-level 1 \
+	--close-holes 30 \
+	--decimate 0.25 \
+	--ensure-edge-size 1 \
+	--max-views 8 \
+	--regularity-weight 0.2 \
+	--scales 2 \
+	--scale-step 0.5
+
+step5 :
+	docker compose -f ./docker/docker-compose.yml \
+	run --rm --user 1000:1000 openmvs \
+	TextureMesh \
+	-i /$(scene)/mvs/0/scene_dense.mvs \
+	-m /$(scene)/mvs/0/scene_dense_mesh_refined.ply \
+	-o /$(scene)/mvs/0/scene_dense_mesh_texture.glb \
+	-w /$(scene)/mvs/0/work \
+	--cuda-device -1 \
+	--export-type glb
