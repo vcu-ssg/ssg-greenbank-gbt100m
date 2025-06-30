@@ -20,21 +20,6 @@ def run_colmap_feature_extractor(image_path, db_path):
         "--database_path", db_path,
         "--image_path", image_path,
         "--ImageReader.single_camera", "1",
-        "--SiftExtraction.use_gpu", "0",
-        "--SiftExtraction.gpu_index", "0",
-        "--SiftExtraction.estimate_affine_shape", "0",
-        "--SiftExtraction.domain_size_pooling", "0",
-        "--SiftExtraction.num_threads", "8" 
-    ], "COLMAP FeatureExtractor")
-
-def run_colmap_feature_extractor2(image_path, db_path):
-    run_subprocess([
-        "colmap",
-        "colmap",
-        "feature_extractor",
-        "--database_path", db_path,
-        "--image_path", image_path,
-        "--ImageReader.single_camera", "1",
         "--ImageReader.camera_model", "PINHOLE",          # assume pinhole, can be changed if needed
         "--SiftExtraction.use_gpu", "0",                   # CPU for stability
         "--SiftExtraction.num_threads", "8",               # 8 is good starting point
@@ -271,7 +256,7 @@ def run_colmap_pipeline(image_path, colmap_output_folder):
 
     if 1:
         # 4️⃣ Run pipeline steps with CONTAINER paths
-        run_colmap_feature_extractor2(image_path_in_container, db_path_in_container)
+        run_colmap_feature_extractor(image_path_in_container, db_path_in_container)
         run_colmap_sequential_matcher(db_path_in_container)
         run_colmap_mapper(db_path_in_container, image_path_in_container, sparse_folder_in_container)
 

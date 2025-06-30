@@ -1,0 +1,20 @@
+---
+title: "Project Index"
+---
+
+# Project Index
+
+## [DJI_0145-png_1.00_1600_none](DJI_0145-png_1.00_1600_none.html)
+- This links to `DJI_0145-png_1.00_1600_none.qmd` rendered as HTML.
+
+## [DJI_0145-png_1.00_3200_none](DJI_0145-png_1.00_3200_none.html)
+- This links to `DJI_0145-png_1.00_3200_none.qmd` rendered as HTML.
+
+## [DJI_0145-png_2.00_3200_none](DJI_0145-png_2.00_3200_none.html)
+- This links to `DJI_0145-png_2.00_3200_none.qmd` rendered as HTML.
+
+## [DJI_0145-png_3.00_3200_none](DJI_0145-png_3.00_3200_none.html)
+- This links to `DJI_0145-png_3.00_3200_none.qmd` rendered as HTML.
+
+## [thumbvids](thumbvids.html)
+- This links to `thumbvids.qmd` rendered as HTML.

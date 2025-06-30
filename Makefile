@@ -3,6 +3,9 @@
 # The gsplat pipeline is managed through judicious naming of projects and folders providing
 # significant flexibility of use.
 
+-include Recipes.mak
+
+
 help:
 	@echo ""
 
@@ -70,7 +73,7 @@ format-roots := jpg png
 fps-roots := 0.20 0.40 0.60 0.80 1.00 1.20 1.40 1.60 1.80 2.00 3.00 4.00 5.00
 
 # Desired max width/height for images.  Will assume 16:9 or 9:16.
-width-roots := 1600 1280 1024 800
+width-roots := 1600 1280 1024 800 3200
 
 # Filters to be applied to images after they're pulled from video.
 # For each filter-roots there must be a corresponding recipe-filtered-folder recipe
@@ -79,7 +82,7 @@ filter-roots := none color greyscale
 
 # Models are colmap models like ./sparse/0  ./sparse/0_clean ./sparse/1 etc.
 # 0 is base/default model. Others 
-model-roots := 0 0_filter1 0_filter2
+model-roots := 0 0_filter1 0_filter2 1 2 3
 
 # GSPLAT post processing folders  (point_cloud is unprocessed)
 
@@ -89,219 +92,13 @@ splat-filter-roots := point_cloud sf0 sf1
 
 videos-folder = ./videos
 projects-folder = ./projects
-thumbvids-folder = ./projects/thumbvids
+thumbvids-folder = ./docs/data/thumbvids
 
 poetry-base = poetry run python scripts/cli.py
 #poetry-base = echo
 extract-options = --threads=16
 
 
-#
-# Helpful macros for parsing folder names
-#
-
-ELEM1 = $(word $2,$(subst -, ,$1))
-ELEM2 = $(word $2,$(subst ., ,$(subst -, ,$1)))
-ELEM3 = $(word $2,$(subst /, ,$(subst -, ,$1)))
-ELEM4 = $(word $2,$(subst _, ,$1))
-ELEM5 = $(word $2,$(subst /, ,$1))
-words_3_to_n = $(subst $(space),_,$(wordlist 3, $(words $(subst _, ,$1)), $(subst _, ,$1)))
-
-define newline
-
-
-endef
-
-space := $(empty) $(empty)
-
-
-# expects targets like:  projects/DJI_0145-png_1.00_600_none/images
-# -> format_fps_width_filter
-define recipe-base-folder
-	@echo -------------------------------------------------------------------
-	@echo Extracting images: $(call ELEM5,$(@),2)
-	@echo -------------------------------------------------------------------
-	@if true; then \
-	$(poetry-base) extract-frames $(videos-folder)/$(call ELEM3,$(@),2).MP4 \
-		--output-dir=$(@) \
-		--skip=$(or $($(call ELEM3,$(@),2).skip),0) \
-		--tag=$(call ELEM5,$(@),2) \
-		--format=$(call ELEM4,$(call ELEM3,$(@),3),1) \
-		--fps=$(call ELEM4,$(call ELEM3,$(@),3),2) \
-		--max_width=$(call ELEM4,$(call ELEM3,$(@),3),3) \
-		$(extract-options) ; \
-	fi
-	@if [ "$(call ELEM4,$(call ELEM3,$(@),3),4)" != "none" ]; then \
-		echo "-------------------------------------------------------------------"; \
-		echo "Applying filters: $(call ELEM4,$(call ELEM3,$(@),3),4)"; \
-		echo "-------------------------------------------------------------------"; \
-	fi
-	@if [ "$(call ELEM4,$(call ELEM3,$(@),3),4)" = "color" ]; then \
-		$(poetry-base) convert-images \
-		--input-folder=$(@) \
-		--output-folder=$(@) \
-		--format=$(call ELEM4,$(call ELEM3,$(@),3),1) \
-		--tag=$(call ELEM5,$(@),2) --workers=8 \
-		--sharpen="0x1.0" \
-		--contrast="5x50%" \
-		--no-greyscale ; \
-	elif [ "$(call ELEM4,$(call ELEM3,$(@),3),4)" = "greyscale" ]; then \
-		$(poetry-base) convert-images \
-		--input-folder=$(@) \
-		--output-folder=$(@) \
-		--format=$(call ELEM4,$(call ELEM3,$(@),3),1) \
-		--tag=$(call ELEM5,$(@),2) --workers=8 \
-		--sharpen="0x1.0" \
-		--contrast="5x50%" \
-		--greyscale ; \
-	fi
-endef
-
-
-
-# Apply colmap to transform images folder to colmap pointcloud folder
-
-#  projects/DJI_0145-png_1.00_900_none/colmap/0 : projects/DJI_0145-png_1.00_900_none/images 
-define recipe-colmap-folder-xxx
-	@if [ true ]; then \
-		echo "-------------------------------------------------------------------"; \
-		echo "Running COLMAP $(call ELEM5,$(@),2)"; \
-		echo "-------------------------------------------------------------------"; \
-	fi
-#	$(poetry-base) run-colmap-pipeline-cli $(firstword $(^)) $(@)
-endef
-
-#  projects/DJI_0145-png_1.00_900_none/colmap/0 : projects/DJI_0145-png_1.00_900_none/images 
-#  projects/DJI_0145-png_1.00_900_NONE/colmap/0_filter1 : projects/DJI_0145-png_1.00_900/colmap/0 
-
-define recipe-colmap-folder
-	@if [ "$(call ELEM5,$(@),4)" != "0" ]; then \
-		echo "-------------------------------------------------------------------"; \
-		echo "Running applying COLMAP filter:  $(call ELEM5,$(@),4)"; \
-		echo "-------------------------------------------------------------------"; \
-	else \
-		echo "-------------------------------------------------------------------"; \
-		echo "Running COLMAP $(call ELEM5,$(@),2)"; \
-		echo "-------------------------------------------------------------------"; \
-	fi
-	@if [ "$(call ELEM5,$(@),4)" = "0" ]; then \
-		$(poetry-base) run-colmap-pipeline-cli --image-path=$(firstword $(^)) --output-model-path=$(@); \
-	elif [ "$(call ELEM5,$(@),4)" = "0_filter1" ]; then \
-		$(poetry-base) colmap-model-cleaner \
-		--input-model-folder=$(firstword $(^))/sparse \
-		--output-model-folder=$(@)/sparse/0 \
-		--min-track-len=5 \
-		--max-reproj-error=1.0 \
-		--min-tri-angle=5.0	; \
-	elif [ "$(call ELEM5,$(@),4)" = "0_filter2" ]; then \
-		poetry run python scripts/cli.py colmap-model-cleaner \
-		--input-model-folder=$(firstword $(^))/sparse \
-		--output-model-folder=$(@)/sparse/0 \
-		--min-track-len=3 \
-		--max-reproj-error=2.0 \
-		--min-tri-angle=3.0 ; \
-	fi
-endef
-
-
-#  projects/DJI_0145-png_base_1.00_1600/colmap/stats/model_analyzer-sparse-0.json : projects/DJI_0145-png_base_1.00_1600/colmap/sparse/0 ; $(recipe-colmap-analyzer-folder)
-define recipe-colmap-analyzer-folder
-	$(poetry-base) run-colmap-model-analyzer \
-	--input-model-folder=$(firstword $(^))  \
-	--output-stats-folder=$(@)
-endef
-
-# Apply gsplat to transform colmap folder to gsplat folder
-#   projects/DJI_0150-png_base_0.60_1600/gsplat/0/point_cloud : projects/DJI_0150-png_base_0.60_1600/colmap/0 ; $(recipe-gsplat-folder)
-define recipe-gsplat-folder
-	@if [ true ]; then \
-		echo "-------------------------------------------------------------------"; \
-		echo "Running GSPLAT: $(call ELEM5,$(@),2)"; \
-		echo " target: $(@)"; \
-		echo " Dependent: $(firstword $(^))"; \
-		echo "-------------------------------------------------------------------"; \
-	fi
-	@if [ "1" = "1" ]; then \
-	$(poetry-base) run-gsplat-pipeline \
-	--scene=$(call ELEM5,$(@),2) \
-	--images-dir=$(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/images \
-	--sparse-dir=$(firstword $(^))/sparse \
-	--model-dir=$(@) \
-	--iterations=30000 \
-	--sh_degree=3; \
-	fi
-endef
-
-# Apply gsplat to transform colmap folder to gsplat folder
-#   projects/DJI_0150-png_base_0.60_1600/gsplat/0_clean : projects/DJI_0150-png_base_0.60_1600/colmap/sparse/0_clean ; $(recipe-gsplat-folder2)
-define recipe-gsplat-folder2
-	@if [ true ]; then \
-		echo "-------------------------------------------------------------------"; \
-		echo "Running GSPLAT filter: $(@)"; \
-		echo "-------------------------------------------------------------------"; \
-	fi
-	$(poetry-base) run-gsplat-pipeline \
-	--scene=$(call ELEM5,$(@),2) \
-	--images-dir=$(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/images \
-	--sparse-dir=$(firstword $(^)) \
-	--model-dir=$(@) \
-	--iterations=30000 \
-	--sh_degree=3
-endef
-
-
-
-define recipe-gsplat-post-filter
-	@if [ true ]; then \
-		echo "-------------------------------------------------------------------"; \
-		echo "Running GSPLAT filter: $(@)"; \
-		echo "-------------------------------------------------------------------"; \
-	fi
-	@echo "Input folder  : $(firstword $(^))/point_cloud/iterations_30000/point_cloud.ply"
-	@echo "Output folder : $(@)/iterations_30000/point_cloud.ply"
-endef
-
-
-# projects/thumbvids/DJI_0150-thumb.MP4 : videos/DJI_0150.MP4
-define recipe-thumbvid-folder
-	@if [ true ]; then \
-		echo "-------------------------------------------------------------------"; \
-		echo "Creating thumbvids"; \
-		echo "-------------------------------------------------------------------"; \
-	fi
-	mkdir -p $(thumbvids-folder)
-	# Set ROT := the .rotate value (if any)
-	$(eval ROT := $(or $($(call ELEM3,$(@),3).rotate),0))
-	ffmpeg  \
-		-ss $(or $($(call ELEM3,$(@),3).skip),0) \
-		-display_rotation $(ROT) \
-		-i $(firstword $(^)) \
-		-vf "scale=iw/10:ih/10,setpts=PTS/4" \
-		-an -c:v libx264 \
-		-preset slow -crf 28 -b:v 500k \
-		-threads 16 \
-		$(@)
-endef
-
-# projects/DJI_0145-png_1.00_1600_none/mvs/0 : projects/DJI_0145-png_1.00_1600_none/colmap/0
-define recipe-openmvs-folder
-# output-folder: projects/DJI_0145-png_1.00_1600_none/mvs/0
-# sparse-model-folder: projects/DJI_0145-png_1.00_1600_none/colmap/0
-# image-folder: projects/DJI_0145-png_1.00_1600_none/images
-	@if [ "1" = "1" ]; then \
-		echo "-------------------------------------------------------------------"; \
-		echo "Running MVS: $(call ELEM5,$(@),2)"; \
-		echo " Target: $(@)"; \
-		echo " Dependent: $(firstword $(^))"; \
-		echo "-------------------------------------------------------------------"; \
-	fi
-	@if [ "1" = "1" ]; then \
-		$(poetry-base) run-openmvs-pipeline \
-		--image-folder $(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/images \
-		--sparse-model-folder $(firstword $(^)) \
-		--mvs-output-folder $(@) ; \
-	fi
-endef
 
 # Key macros - this is where all the folder wiring happens!
 
@@ -385,7 +182,10 @@ $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(eval $(projects-fo
 #
 mvs-targets-2 := $(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach tag,$(base-roots) $(tag-roots),$(projects-folder)/$(video)-$(tag)/mvs/$(model))))
 # projects/DJI_0145-base_png_1.00_900/mvs/0_clean : projects/DJI_0145-base_png_1.00_900/colmap/sparse/0_clean ; $(recipe-openmvs-folder)
-$(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(eval $(projects-folder)/$(video)-$(base)/mvs/$(model) : $(projects-folder)/$(video)-$(base)/colmap/$(model) ; $$(recipe-openmvs-folder)$(newline)))))
+$(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(eval \
+	$(projects-folder)/$(video)-$(base)/mvs/$(model) : \
+	$(projects-folder)/$(video)-$(base)/colmap/$(model) ; \
+	$$(recipe-openmvs2-folder)$(newline)))))
 
 
 # FILTER THE SPLATS
@@ -475,21 +275,6 @@ all-keepers: $(keepers)
 show-point-clouds :
 	find projects -mindepth 4 -maxdepth 7 -type f -path "*/gsplat/*/*/point_cloud.ply"
 
-# DJI_0145-png_1.00_1600_none-0-point_cloud.qmd
-define recipe-qmd-builder
-	cp reports/_splat_template.qmd reports/gsp/$(@)
-	sed -i "s|replace_qmd_name_here|$(call ELEM3,$(@),1)-$(call ELEM3,$(@),2)/gsplat/$(call ELEM3,$(@),3)/$(call ELEM2,$(call ELEM3,$(@),4),1)|g" reports/gsp/$@
-endef
-
-keeper-qmds := $(foreach video,$(video-roots),$(foreach model,$(model-roots),$(foreach filter,point_cloud,$(video)-png_1.00_1600_none-$(model)-$(filter).qmd)))
-#$(info $(keeper-qmds))
-$(foreach video,$(video-roots),$(foreach model,$(model-roots),$(foreach filter,point_cloud,$(eval $(video)-png_1.00_1600_none-$(model)-$(filter).qmd : $(projects-folder)/$(video)-png_1.00_1600_none/gsplat/$(model)/$(filter) ; $$(recipe-qmd-builder)$(newline)))))
-
-all-keeper-qmds : $(keeper-qmds)
-
-build-reports: all-keeper-qmds
-	cd reports && poetry run quarto render
-
 
 source-images := $(foreach video,$(video-roots),$(projects-folder)/$(video)-png_1.00_1600_none/images/)
 #$(info $(source-images))
@@ -513,61 +298,18 @@ clean-dense-mesh:
 		--remove-zero-area \
 		--binary
 
+build-reports: thumbvids
+	poetry run python scripts/cli.py \
+	generate-project-reports \
+	--projects-root=projects \
+	--report-qmds=reports/prj \
+	--report-data=docs/data
+	cd reports && poetry run quarto render
+
 scene := projects/DJI_0145-png_1.00_1600_none
 
-step1 :
-	mkdir -p $(scene)/mvs/0/work
-	docker compose -f ./docker/docker-compose.yml \
-	run --rm --user 1000:1000 openmvs \
-	InterfaceCOLMAP \
-	-i /$(scene)/colmap/0 \
-	-o /$(scene)/mvs/0/scene.mvs \
-	-w /$(scene)/mvs/0/work \
-	--image-folder /$(scene)/../images
+# projects/DJI_0145-png_1.00_1600_none/mvs/0_filter1-0/ : projects/DJI_0145-png_1.00_1600_none/colmap/0_filter1
 
-step2 :
-	docker compose -f ./docker/docker-compose.yml \
-	run --rm --user 1000:1000 openmvs \
-	DensifyPointCloud \
-	-i /$(scene)/mvs/0/scene.mvs \
-	-o /$(scene)/mvs/0/scene_dense.mvs \
-	-w /$(scene)/mvs/0/work \
-	--cuda-device -1
+projects/DJI_0145-png_1.00_1600_none/mvs/0_filter1-0 : ; $(recipe-openmvs-folder)
 
-step3 :
-	docker compose -f ./docker/docker-compose.yml \
-	run --rm --user 1000:1000 openmvs \
-	ReconstructMesh \
-	-i /$(scene)/mvs/0/scene_dense.mvs \
-	-o /$(scene)/mvs/0/scene_dense_mesh.ply \
-	-w /$(scene)/mvs/0/work \
-	--cuda-device -1
-
-step4 :
-	docker compose -f ./docker/docker-compose.yml \
-	run --rm --user 1000:1000 openmvs \
-	RefineMesh \
-	-i /$(scene)/mvs/0/scene_dense.mvs \
-	-m /$(scene)/mvs/0/scene_dense_mesh.ply \
-	-o /$(scene)/mvs/0/scene_dense_mesh_refined.ply \
-	-w /$(scene)/mvs/0/work \
-	--cuda-device -1 \
-	--resolution-level 1 \
-	--close-holes 30 \
-	--decimate 0.25 \
-	--ensure-edge-size 1 \
-	--max-views 8 \
-	--regularity-weight 0.2 \
-	--scales 2 \
-	--scale-step 0.5
-
-step5 :
-	docker compose -f ./docker/docker-compose.yml \
-	run --rm --user 1000:1000 openmvs \
-	TextureMesh \
-	-i /$(scene)/mvs/0/scene_dense.mvs \
-	-m /$(scene)/mvs/0/scene_dense_mesh_refined.ply \
-	-o /$(scene)/mvs/0/scene_dense_mesh_texture.glb \
-	-w /$(scene)/mvs/0/work \
-	--cuda-device -1 \
-	--export-type glb
+test : projects/DJI_0145-png_1.00_1600_none/mvs/0_filter1-0

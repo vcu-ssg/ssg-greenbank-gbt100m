@@ -11,6 +11,8 @@ website:
     left:
       - href: videos.qmd
         text: Videos
+      - href: prj/index.qmd
+        text: Pipelines
 
 format:
   html:

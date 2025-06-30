@@ -43,6 +43,7 @@ class ProjectFilesAndPaths:
         except (FileNotFoundError, PermissionError, shutil.SameFileError) as e:
             print(f"Error copying file: {e}")
             x = None
+
         # splat file
         self.splat_local_source  = Path(f"{self.local_path}/projects") / self.root_name / Path("iteration_30000/point_cloud.splat")
         self.splat_web_url = Path(f"{self.web_path}/data") / self.root_name.parts[0] / Path(f"{self.root_name.parts[2]}-{self.splat_local_source.name}")
@@ -52,6 +53,17 @@ class ProjectFilesAndPaths:
         except (FileNotFoundError, PermissionError, shutil.SameFileError) as e:
             print(f"Error copying file: {e}")
             x = None
+
+        # texture file
+        self.texture_local_source  = Path(f"{self.local_path}/projects") / self.root_name.parts[0] / "mvs/0/scene_dense_mesh_texture.glb" ;
+        self.texture_web_url = Path(f"{self.web_path}/data") / self.root_name.parts[0] / Path(f"{self.root_name.parts[2]}-{self.texture_local_source.name}")
+        self.texture_local_dest = Path(f"{self.local_path}/docs/data") / self.root_name.parts[0] / Path(f"{self.root_name.parts[2]}-{self.texture_local_source.name}")
+        try:
+            x = shutil.copyfile( str( self.texture_local_source), str(self.texture_local_dest) )
+        except (FileNotFoundError, PermissionError, shutil.SameFileError) as e:
+            print(f"Error copying file: {e}")
+            x = None
+
             
     def __repr__(self):
         return f"<ProjectFilesAndPaths {self.root_name} at {self.project_folder}>"

@@ -1,6 +1,9 @@
 import click
 from scripts.extract_frames import extract_frames_from_file, extract_frames_from_folder, process_folder_with_convert, process_folder_with_convert_workers
 from scripts import colmap_pipeline, openmvg_pipeline, convert_matches_g_to_dot, gsplat_pipeline, openmvs_pipeline
+from scripts.mask_generator import generate_combined_mask
+
+from scripts.report_utils import build_folder_tree_with_files, write_qmds_from_tree
 
 import torch
 from pathlib import Path
@@ -267,6 +270,52 @@ def clean_dense_mesh_cmd(input_file, output_file, min_component_diag, recompute_
         remove_zero_area=remove_zero_area,
         binary=binary
     )
+
+
+@cli.command()
+@click.option("--images-dir", required=True, type=click.Path(exists=True, file_okay=False),
+              help="Input folder containing PNG frames.")
+@click.option("--output-mask-dir", required=True, type=click.Path(file_okay=False),
+              help="Output folder for generated mask images.")
+def generate_masks(images_dir, output_mask_dir):
+    """Generate combined edge + vertical masks for COLMAP."""
+    from scripts.mask_generator import generate_combined_mask
+
+    images_dir = Path(images_dir)
+    output_mask_dir = Path(output_mask_dir)
+    output_mask_dir.mkdir(parents=True, exist_ok=True)
+
+    png_files = sorted(images_dir.glob("*.png"))
+    if not png_files:
+        click.echo("No PNG images found.")
+        return
+
+    click.echo(f"Generating masks for {len(png_files)} images...")
+
+    for img_path in png_files:
+        mask_path = output_mask_dir / (img_path.stem + ".png")
+        generate_combined_mask(img_path, mask_path)
+        click.echo(f"✅ {mask_path.name} created.")
+
+    click.echo(f"🎉 All masks written to: {output_mask_dir}")
+
+
+@cli.command()
+@click.option("--projects-root", required=True, type=click.Path(exists=True, file_okay=False),
+              help="Root folder containing all projects.")
+@click.option("--report-qmds", required=True, type=click.Path(file_okay=False),
+              help="Output folder for generated QMD files.")
+@click.option("--report-data", required=True, type=click.Path(file_okay=False),
+              help="Output folder for data.")
+def generate_project_reports(projects_root, report_qmds, report_data ):
+    """Scan projects folder and generate QMD reports."""
+    click.echo(f"🔍 Scanning projects in: {projects_root}")
+    tree = build_folder_tree_with_files(projects_root)
+    click.echo(f"📂 Found {len(tree)} projects.")
+
+    write_qmds_from_tree(tree, report_qmds, report_data )
+    click.echo(f"🎉 All QMD reports written to: {report_qmds}")
+
 
 if __name__ == "__main__":
     cli()
