@@ -1,0 +1,35 @@
+---
+title: ""
+---
+
+# Pipeline: DJI_0145-png_1.00_800_none
+
+
+<div class="splat-block">
+<h3>Gaussian Splat: Model 0</h3>
+<div class="splat-wrapper">
+<canvas id="splat_viewer_DJI_0145-png_1.00_800_none_0" class="splat-canvas"></canvas>
+</div>
+</div>
+
+
+
+<script type="module">
+import { loadSplatViewer } from "../js/splat_viewer.js";
+
+loadSplatViewer("splat_viewer_DJI_0145-png_1.00_800_none_0", "../data/DJI_0145-png_1.00_800_none/0-gsplat-point_cloud.splat");
+</script>
+
+
+<div class="viewer-block">
+<h3>Sparse Point Cloud: Model 0</h3>
+<div id="ply_viewer_DJI_0145-png_1.00_800_none_0" class="threejs-container"></div>
+</div>
+
+
+
+<script type="module">
+import { loadPLYViewer } from "../js/ply_viewer.js";
+
+loadPLYViewer("ply_viewer_DJI_0145-png_1.00_800_none_0", "../data/DJI_0145-png_1.00_800_none/0-colmap-points3D.ply");
+</script>

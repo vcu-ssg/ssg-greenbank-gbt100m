@@ -43,6 +43,7 @@ def run_gsplat_pipeline(scene, images_dir, sparse_dir, model_dir, iterations=300
     # Validate and create host-side output directory
     try:
         os.makedirs(model_dir, exist_ok=True)
+        os.makedirs( model_dir + "/point_cloud" )
         logger.success(f"📁 Ensured output directory: {model_dir}")
     except Exception as e:
         logger.error(f"❌ Failed to create output directory {model_dir}: {e}")

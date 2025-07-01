@@ -1,20 +1,59 @@
 ---
-title: "Project Index"
+title: ""
 ---
 
-# Project Index
+# Listing of pipelines
 
-## [DJI_0145-png_1.00_1600_none](DJI_0145-png_1.00_1600_none.html)
-- This links to `DJI_0145-png_1.00_1600_none.qmd` rendered as HTML.
+## [DJI_0145-png_1.00_800_none](DJI_0145-png_1.00_800_none.html)
 
-## [DJI_0145-png_1.00_3200_none](DJI_0145-png_1.00_3200_none.html)
-- This links to `DJI_0145-png_1.00_3200_none.qmd` rendered as HTML.
+:::: {.columns}
+::: {.column width=50%}
+### Images from video
 
-## [DJI_0145-png_2.00_3200_none](DJI_0145-png_2.00_3200_none.html)
-- This links to `DJI_0145-png_2.00_3200_none.qmd` rendered as HTML.
+| Images attribute   | Value   |
+|:-------------------|:--------|
+| format             | png     |
+| fps                | 1.00    |
+| maxdim             | 800     |
+| filter             | none    |
+| Image Count        | 153     |
 
-## [DJI_0145-png_3.00_3200_none](DJI_0145-png_3.00_3200_none.html)
-- This links to `DJI_0145-png_3.00_3200_none.qmd` rendered as HTML.
+:::
+::: {.column width=50% .threejs-container}
+<em><center>[DJI_0145-thumb.MP4](../data/thumbvids/DJI_0145-thumb.MP4)</center></em>
+<video src="../data/thumbvids/DJI_0145-thumb.MP4" autoplay loop muted playsinline />
+:::
+::::
 
-## [thumbvids](thumbvids.html)
-- This links to `thumbvids.qmd` rendered as HTML.
+:::: {.columns}
+::: {.column width=30%}
+### COLMAP Models
+
+| Model ID   |
+|:-----------|
+| 0          |
+
+:::
+::: {.column width=5%}
+<p>&nbsp;</p>
+:::
+::: {.column width=30%}
+### GSPLAT Models
+
+| Model ID   |
+|:-----------|
+| 0          |
+
+:::
+::: {.column width=5%}
+<p>&nbsp;</p>
+:::
+::: {.column width=30%}
+### MVS Models
+
+No mvs models
+
+:::
+::::
+
+

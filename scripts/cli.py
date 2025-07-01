@@ -1,12 +1,14 @@
 import click
 from scripts.extract_frames import extract_frames_from_file, extract_frames_from_folder, process_folder_with_convert, process_folder_with_convert_workers
 from scripts import colmap_pipeline, openmvg_pipeline, convert_matches_g_to_dot, gsplat_pipeline, openmvs_pipeline
-from scripts.mask_generator import generate_combined_mask
+from scripts.mask_generator import generate_combined_mask,generate_masks_in_directory
 
 from scripts.report_utils import build_folder_tree_with_files, write_qmds_from_tree
 
 import torch
 from pathlib import Path
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 @click.group()
 def cli():
@@ -277,7 +279,7 @@ def clean_dense_mesh_cmd(input_file, output_file, min_component_diag, recompute_
               help="Input folder containing PNG frames.")
 @click.option("--output-mask-dir", required=True, type=click.Path(file_okay=False),
               help="Output folder for generated mask images.")
-def generate_masks(images_dir, output_mask_dir):
+def generate_masksxxxx(images_dir, output_mask_dir):
     """Generate combined edge + vertical masks for COLMAP."""
     from scripts.mask_generator import generate_combined_mask
 
@@ -316,6 +318,27 @@ def generate_project_reports(projects_root, report_qmds, report_data ):
     write_qmds_from_tree(tree, report_qmds, report_data )
     click.echo(f"🎉 All QMD reports written to: {report_qmds}")
 
+
+@cli.command()
+@click.option("--images-dir", required=True, type=click.Path(exists=True, file_okay=False),
+              help="Input folder containing PNG frames.")
+@click.option("--output-mask-dir", required=True, type=click.Path(file_okay=False),
+              help="Output folder for generated mask images.")
+@click.option("--output-masked-image-dir", required=False, type=click.Path(file_okay=False),
+              help="Optional output folder for masked images (images with mask applied).")
+@click.option("--filter", default=None, show_default=True,
+              help="Number of threads/workers to use.")
+@click.option("--workers", default=8, show_default=True,
+              help="Number of threads/workers to use.")
+def generate_masks(images_dir, output_mask_dir, output_masked_image_dir, filter, workers):
+    """Generate combined edge + vertical masks for COLMAP and optionally masked images."""
+    generate_masks_in_directory(
+        Path(images_dir),
+        Path(output_mask_dir),
+        Path(output_masked_image_dir) if output_masked_image_dir else None,
+        workers,
+        filter
+    )
 
 if __name__ == "__main__":
     cli()

@@ -136,12 +136,27 @@ colmap-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(
 
 colmap-sparse-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(projects-folder)/$(video)-$(base)/colmap/$(model))))
 #$(info $(colmap-sparse-targets))
-$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(eval $(projects-folder)/$(video)-$(base)/colmap/$(model) : $(projects-folder)/$(video)-$(base)/$(if $(filter 0,$(model)),images,colmap/0) ; $$(recipe-colmap-folder)$(newline)))))
+$(foreach video,$(video-roots), \
+	$(foreach base,$(base-roots), \
+		$(foreach model,$(model-roots), \
+			$(eval $(projects-folder)/$(video)-$(base)/colmap/$(model) : \
+			$(projects-folder)/$(video)-$(base)/images ; \
+			$$(recipe-colmap-folder)$(newline) \
+			))))
+
+#$(projects-folder)/$(video)-$(base)/$(if $(filter 0,$(model)),images,colmap/0) ;
+
 #$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(colmap-filters)),$(eval $(projects-folder)/$(video)-$(base)/colmap/$(model) : $(projects-folder)/$(video)-$(base)/colmap ; $$(recipe-colmap-folder)$(newline)))))
 
 # Not really necessary unless you want to rebuild ALL stats, for example, if you change formats.
 # projects/DJI_0150-png_base_0.60_1600/colmap/stats/model_analyzer-sparse-0_clean.json
-$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(eval $(projects-folder)/$(video)-$(base)/colmap/stats/model_analyzer-sparse-$(model).json : $(projects-folder)/$(video)-$(base)/colmap/sparse/$(model) ; $$(recipe-colmap-analyzer-folder)$(newline)))))
+$(foreach video,$(video-roots), \
+	$(foreach base,$(base-roots), \
+		$(foreach model,$(model-roots), \
+			$(eval $(projects-folder)/$(video)-$(base)/colmap/stats/model_analyzer-sparse-$(model).json : \
+			$(projects-folder)/$(video)-$(base)/colmap/sparse/$(model) ; \
+			$$(recipe-colmap-analyzer-folder)$(newline) \
+			))))
 
 
 # GUASSIAN SPLAT the COLMAP models
@@ -168,7 +183,7 @@ gsplat-filter-targets := $(foreach video,$(video-roots),$(foreach base,$(base-ro
 $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(foreach filter,$(splat-filter-roots), \
 	$(eval $(projects-folder)/$(video)-$(base)/gsplat/$(model)/$(filter) : \
 	$(projects-folder)/$(video)-$(base)/colmap/$(model) ; \
-	$$(recipe-gsplat-folder)$(newline) )))))
+	$$(recipe-gsplat-model)$(newline) )))))
 	
 
 	
@@ -306,10 +321,23 @@ build-reports: thumbvids
 	--report-data=docs/data
 	cd reports && poetry run quarto render
 
+preview : build-reports
+	cd reports && poetry run quarto preview
+
 scene := projects/DJI_0145-png_1.00_1600_none
 
 # projects/DJI_0145-png_1.00_1600_none/mvs/0_filter1-0/ : projects/DJI_0145-png_1.00_1600_none/colmap/0_filter1
 
 projects/DJI_0145-png_1.00_1600_none/mvs/0_filter1-0 : ; $(recipe-openmvs-folder)
 
-test : projects/DJI_0145-png_1.00_1600_none/mvs/0_filter1-0
+
+dep := projects/DJI_0145-png_1.00_800_none/images
+tar := projects/DJI_0145-png_1.00_800_none/colmap/4
+test : 
+	@echo "----------------------------------------------------------------------"
+	poetry run python scripts/cli.py \
+	generate-masks \
+	--images-dir $(dep) \
+	--output-mask-dir $(tar)/masks \
+	--output-masked-image-dir $(tar)/images
+

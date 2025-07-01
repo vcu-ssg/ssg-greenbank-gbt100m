@@ -141,6 +141,21 @@ define recipe-colmap-mapper
 		--Mapper.num_threads 8 ;
 endef
 
+
+define recipe-add-normals-to-ply
+	echo "Adding normals to PLY to: $(@)/0/points3D.ply ..."; \
+	poetry run \
+	python -c 'import pymeshlab; \
+ms = pymeshlab.MeshSet(); \
+ms.load_new_mesh("$(@)/0/points3D.ply"); \
+ms.compute_normal_for_point_clouds(); \
+ms.save_current_mesh("$(@)/0/points3D_with_normals.ply", \
+binary=True, \
+save_vertex_normal=True, \
+save_vertex_color=True);' ;
+endef
+
+
 define recipe-colmap-model-converter
 	echo "COLMAP model converter" ; \
 	docker compose -f ./docker/docker-compose.yml \
@@ -148,96 +163,143 @@ define recipe-colmap-model-converter
 	colmap model_converter \
 		--input_path /$(@)/0 \
 		--output_path /$(@)/0/points3D.ply \
-		--output_type PLY ;
+		--output_type PLY ; \
+	echo "Done. COLMAP model converter" ;
 endef
 
 
-# $(@) -> projects/DJI_0145-png_1.00_1600_none/colmap/1
-define recipe-colmap-model-1
+define recipe-colmap-complete-folders
 	echo "-------------------------------------------------------------------"; \
-	echo "COLMAP and Mask:  $(call ELEM5,$(@),4)"; \
+	echo "Complete folder setup with links and copies"; \
 	echo "Target: $(@)"; \
 	echo "Depend: $(firstword $(^))"; \
 	echo "-------------------------------------------------------------------"; \
-	mkdir -p $(@) ; \
-	$(recipe-colmap-feature-extracter) \
-	$(recipe-colmap-sequential-matcher) \
-	$(recipe-colmap-mapper) \
-	$(recipe-colmap-model-converter) \
-	mv $(@)/0 $(@)/sparse ;
+	cp $(@)/0/points3D_with_normals.ply $(@)/0/point_cloud.ply; \
+	cp -r $(@)/0 $(@)/sparse; \
+	cp $(@)/0/points3D_with_normals.ply $(@)/sparse/points3D.ply; \
+	if [ ! -e "$(@)/images" ]; then \
+	  ln -s ../../images $(@)/images; \
+	  echo "Created symlink $(@)/images -> ../../images"; \
+	else \
+	  echo "Link or folder $(@)/images already exists"; \
+	fi ;
 endef
 
 
-define recipe-colmap-model-2
+define recipe-colmap-dense
 	echo "-------------------------------------------------------------------"; \
-	echo "COLMAP and Mask:  $(call ELEM5,$(@),4)"; \
+	echo "COLMAP Dense Stereo + Fusion: $(@)"; \
+	echo "-------------------------------------------------------------------"; \
+	docker compose -f ./docker/docker-compose.yml \
+	run --rm --user 1000:1000 colmap \
+	colmap image_undistorter \
+		--image_path /$(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/images \
+		--input_path /$(@)/sparse \
+		--output_path /$(@)/dense ; \
+	docker compose -f ./docker/docker-compose.yml \
+	run --rm --user 1000:1000 colmap \
+	colmap patch_match_stereo \
+		--workspace_path /$(@)/dense \
+		--workspace_format COLMAP \
+		--PatchMatchStereo.geom_consistency true ; \
+	docker compose -f ./docker/docker-compose.yml \
+	run --rm --user 1000:1000 colmap \
+	colmap stereo_fusion \
+		--workspace_path /$(@)/dense \
+		--workspace_format COLMAP \
+		--output_path /$(@)/dense/fused.ply ;
+endef
+
+define recipe-colmap-generate-no-masks
+	echo "-------------------------------------------------------------------"; \
+	echo "Generate image masks"; \
 	echo "Target: $(@)"; \
 	echo "Depend: $(firstword $(^))"; \
 	echo "-------------------------------------------------------------------"; \
-	mkdir -p $(@) ; \
 	poetry run python scripts/cli.py generate-masks \
 	--images-dir=$(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/images \
-	--output-mask-dir=$(@)/masks ; \
-	$(recipe-colmap-feature-extracter-with-masks) \
-	$(recipe-colmap-sequential-matcher) \
-	$(recipe-colmap-mapper) \
-	$(recipe-colmap-model-converter) \
-	mv $(@)/0 $(@)/sparse ;
+	--output-mask-dir=$(@)/masks \
+	--output-masked-image-dir=$(@)/images \
+	--filter=none \
+	--workers=16 ;
 endef
 
-define recipe-colmap-model-3
+define recipe-colmap-generate-masks
 	echo "-------------------------------------------------------------------"; \
-	echo "COLMAP and Mask:  $(call ELEM5,$(@),4)"; \
+	echo "Generate image masks"; \
+	echo "Target: $(@)"; \
+	echo "Depend: $(firstword $(^))"; \
+	echo "-------------------------------------------------------------------"; \
+	poetry run python scripts/cli.py generate-masks \
+	--images-dir=$(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/images \
+	--output-mask-dir=$(@)/masks \
+	--output-masked-image-dir=$(@)/images \
+	--filter=default \
+	--workers=16 ;
+endef
+
+#$(recipe-colmap-dense) \
+
+define recipe-colmap-model-0
+	echo "-------------------------------------------------------------------"; \
+	echo "COLMAP and Mask MODEL: $(call ELEM5,$(@),4)"; \
 	echo "Target: $(@)"; \
 	echo "Depend: $(firstword $(^))"; \
 	echo "-------------------------------------------------------------------"; \
 	mkdir -p $(@) ; \
-	poetry run python scripts/cli.py generate-masks \
-	--images-dir=$(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/images \
-	--output-mask-dir=$(@)/masks ; \
+	$(recipe-colmap-generate-no-masks) \
 	$(recipe-colmap-feature-extracter-with-masks2) \
 	$(recipe-colmap-sequential-matcher) \
 	$(recipe-colmap-mapper) \
-	$(recipe-colmap-model-converter) \
-	mv $(@)/0 $(@)/sparse ;
+	$(recipe-colmap-model-converter)  \
+	$(recipe-add-normals-to-ply) \
+	$(recipe-colmap-complete-folders) \
+	echo "-------------------------------------------------------------------"; \
+	echo "FINISHED: COLMAP plus Mask MODEL: $(call ELEM5,$(@),4)"; \
+	echo "Target: $(@)"; \
+	echo "Depend: $(firstword $(^))"; \
+	echo "FINISHED"; \
+	echo "-------------------------------------------------------------------"
+endef
+
+define recipe-colmap-model-1
+	echo "-------------------------------------------------------------------"; \
+	echo "COLMAP and Mask MODEL: $(call ELEM5,$(@),4)"; \
+	echo "Target: $(@)"; \
+	echo "Depend: $(firstword $(^))"; \
+	echo "-------------------------------------------------------------------"; \
+	mkdir -p $(@) ; \
+	$(recipe-colmap-generate-masks) \
+	$(recipe-colmap-feature-extracter-with-masks2) \
+	$(recipe-colmap-sequential-matcher) \
+	$(recipe-colmap-mapper) \
+	$(recipe-colmap-model-converter)  \
+	$(recipe-add-normals-to-ply) \
+	$(recipe-colmap-complete-folders) \
+	echo "-------------------------------------------------------------------"; \
+	echo "FINISHED: COLMAP plus Mask MODEL: $(call ELEM5,$(@),4)"; \
+	echo "Target: $(@)"; \
+	echo "Depend: $(firstword $(^))"; \
+	echo "FINISHED"; \
+	echo "-------------------------------------------------------------------"
 endef
 
 #  projects/DJI_0145-png_1.00_900_none/colmap/0 : projects/DJI_0145-png_1.00_900_none/images 
 #  projects/DJI_0145-png_1.00_900_NONE/colmap/0_filter1 : projects/DJI_0145-png_1.00_900/colmap/0 
 
 define recipe-colmap-folder
-	@if [ "$(call ELEM5,$(@),4)" != "0" ]; then \
-		echo "-------------------------------------------------------------------"; \
-		echo "Running applying COLMAP filter:  $(call ELEM5,$(@),4)"; \
-		echo "-------------------------------------------------------------------"; \
-	else \
-		echo "-------------------------------------------------------------------"; \
-		echo "Running COLMAP $(call ELEM5,$(@),2)"; \
-		echo "-------------------------------------------------------------------"; \
-	fi
 	@if [ "$(call ELEM5,$(@),4)" = "0" ]; then \
-		$(poetry-base) run-colmap-pipeline-cli --image-path=$(firstword $(^)) --output-model-path=$(@); \
+		$(recipe-colmap-model-0); \
 	elif [ "$(call ELEM5,$(@),4)" = "1" ]; then \
-		$(recipe-colmap-model-1) \
-	elif [ "$(call ELEM5,$(@),4)" = "2" ]; then \
-		$(recipe-colmap-model-2) \
-	elif [ "$(call ELEM5,$(@),4)" = "3" ]; then \
-		$(recipe-colmap-model-3) \
-	elif [ "$(call ELEM5,$(@),4)" = "0_filter1" ]; then \
-		$(poetry-base) colmap-model-cleaner \
-		--input-model-folder=$(firstword $(^))/sparse \
-		--output-model-folder=$(@)/sparse/0 \
-		--min-track-len=5 \
-		--max-reproj-error=1.0 \
-		--min-tri-angle=5.0	; \
-	elif [ "$(call ELEM5,$(@),4)" = "0_filter2" ]; then \
-		poetry run python scripts/cli.py colmap-model-cleaner \
-		--input-model-folder=$(firstword $(^))/sparse \
-		--output-model-folder=$(@)/sparse/0 \
-		--min-track-len=3 \
-		--max-reproj-error=2.0 \
-		--min-tri-angle=3.0 ; \
+		$(recipe-colmap-model-1); \
+	else \
+		echo "No recipe provided.  See: recipe-colmap-folder"; \
+		exit 1; \
 	fi
+endef
+
+define xrecipe-colmap-folder
+	$(recipe-colmap-model-0)
 endef
 
 
@@ -250,7 +312,7 @@ endef
 
 # Apply gsplat to transform colmap folder to gsplat folder
 #   projects/DJI_0150-png_base_0.60_1600/gsplat/0/point_cloud : projects/DJI_0150-png_base_0.60_1600/colmap/0 ; $(recipe-gsplat-folder)
-define recipe-gsplat-folder
+define recipe-gsplat-modelx
 	@if [ true ]; then \
 		echo "-------------------------------------------------------------------"; \
 		echo "Running GSPLAT: $(call ELEM5,$(@),2)"; \
@@ -258,7 +320,7 @@ define recipe-gsplat-folder
 		echo " Dependent: $(firstword $(^))"; \
 		echo "-------------------------------------------------------------------"; \
 	fi
-	@if [ "1" = "1" ]; then \
+	@if [ "0" = "1" ]; then \
 	$(poetry-base) run-gsplat-pipeline \
 	--scene=$(call ELEM5,$(@),2) \
 	--images-dir=$(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/images \
@@ -271,7 +333,7 @@ endef
 
 # Apply gsplat to transform colmap folder to gsplat folder
 #   projects/DJI_0150-png_base_0.60_1600/gsplat/0_clean : projects/DJI_0150-png_base_0.60_1600/colmap/sparse/0_clean ; $(recipe-gsplat-folder2)
-define recipe-gsplat-folder2
+define recipe-gsplat-folder
 	@if [ true ]; then \
 		echo "-------------------------------------------------------------------"; \
 		echo "Running GSPLAT filter: $(@)"; \
@@ -286,6 +348,33 @@ define recipe-gsplat-folder2
 	--sh_degree=3
 endef
 
+
+# projects/DJI_0145-png_1.00_1600_none/gsplat/3
+define recipe-gsplat-model
+	@if [ true ]; then \
+		echo "-------------------------------------------------------------------"; \
+		echo "GSPLAT TARGET: $(@)"; \
+		echo "    Dependent: $(firstword $(^))"; \
+		echo "-------------------------------------------------------------------"; \
+	fi ; \
+	mkdir -p $(@) ; 
+
+	if [ "1" = "1" ]; then \
+	docker compose -f ./docker/docker-compose.yml \
+	run --rm --user 1000:1000 gsplat \
+	python train.py \
+		--source_path /$(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/colmap/$(call ELEM5,$(@),4)/sparse \
+		--model_path /$(@) \
+		--images /$(call ELEM5,$(@),1)/$(call ELEM5,$(@),2)/colmap/$(call ELEM5,$(@),4)/images \
+		--iterations 30000 \
+		--sh_degree 3 ;	 \
+	fi ; \
+	docker compose -f ./docker/docker-compose.yml \
+	run --rm --user 1000:1000 gsplat \
+	python /opt/point-cloud-tools/convert.py \
+	/$(@)/point_cloud/iteration_30000/point_cloud.ply \
+	/$(@)/point_cloud/iteration_30000/point_cloud.splat ;
+endef
 
 
 define recipe-gsplat-post-filter
@@ -364,7 +453,6 @@ define recipe-openmvs-folder
 	-w /$(call MVS_PATH,$(@))/work \
 	--image-folder ../../../images \
 	--max-threads 0 \
-	--binary 1 \
 	--normalize 0 \
 	--force-points 1 \
 	--no-points 0 \
@@ -754,6 +842,7 @@ endef
 define recipe-openmvs2-folder 
 	@if [ "1" = "1" ]; then \
 		echo "-------------------------------------------------------------------"; \
+		echo " RECIPE-OPENMVS2-FOLDER"; \
 		echo "Running MVS: $(@)"; \
 		echo " MVSPATH: $(call MVS_PATH,$(@))"; \
 		echo " Dependent: $(firstword $(^))"; \
@@ -768,16 +857,13 @@ define recipe-openmvs2-folder
 	docker compose -f ./docker/docker-compose.yml \
 	run --rm --user 1000:1000 openmvs \
 	InterfaceCOLMAP \
-	-i /$(call MVS_PATH,$(@))/../../colmap/0 \
+	-i /$(call MVS_PATH,$(@))/../../colmap/$(call ELEM5,$(@),4) \
 	-o /$(call MVS_PATH,$(@))/scene.mvs \
 	-w /$(call MVS_PATH,$(@))/work \
-	--image-folder ../../../images \
+	--image-folder /$(call MVS_PATH,$(@))/../../../images \
 	--max-threads 20 \
-	--binary 1 \
 	--normalize 0 \
-	--force-points 1 \
-	--no-points 0 \
-	--common-intrinsics 0
+	--force-points 1
 
 	@echo "----------------------------------------------------------------------"
 	@echo "DensifyPointCloud"
@@ -800,7 +886,6 @@ define recipe-openmvs2-folder
 	--number-views 10 \
 	--number-views-fuse 2 \
 	--fusion-mode 0 \
-	--fusion-filter 2 \
 	--postprocess-dmaps 1 \
 	--estimate-roi 2 \
 	--crop-to-roi 1 \
@@ -879,6 +964,16 @@ define recipe-openmvs2-folder
 	--sharpness-weight 0.5 \
 	--max-texture-size 4096
 
+	@echo "----------------------------------------------------------------------"
+	@echo "Embed texture PNG into GLB"
+	@echo "----------------------------------------------------------------------"
+	docker compose -f ./docker/docker-compose.yml \
+	run --rm --user 1000:1000 openmvs \
+	sh -c "gltf-transform copy \
+		/$(call MVS_PATH,$(@))/scene_dense_mesh_texture.glb \
+		/$(call MVS_PATH,$(@))/scene_dense_mesh_texture_embedded.glb";
+
+
 	@if [ "1" = "1" ]; then \
 		echo "-------------------------------------------------------------------"; \
 		echo "Done with MVS: $(@)"; \
@@ -886,4 +981,19 @@ define recipe-openmvs2-folder
 		echo "Dependent: $(firstword $(^))"; \
 		echo "-------------------------------------------------------------------"; \
 	fi
+endef
+
+define recipe-embed-glb
+	@echo "----------------------------------------------------------------------"
+	@echo "Embed texture PNG into GLB"
+	@echo "----------------------------------------------------------------------"
+	docker compose -f ./docker/docker-compose.yml \
+	run --rm --user 1000:1000 openmvs \
+	sh -c "gltf-transform copy \
+		/$(@)/scene_dense_mesh_texture.glb \
+		/$(@)/scene_dense_mesh_texture_temp.glb";
+	sh -c "gltf-transform metalrough \
+		/$(@)/scene_dense_mesh_texture_temp.glb \
+		/$(@)/scene_dense_mesh_texture_embedded.glb";
+
 endef
