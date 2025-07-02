@@ -6,23 +6,49 @@ title: ""
 
 
 <div class="splat-block">
-<h3>Textured GLB: Model 1</h3>
-<div id="glb_viewer_DJI_0145-png_1.00_800_none_1" class="threejs-container"></div>
+<h3>Gaussian Splat: Model 0 (iteration_30000)</h3>
+<div class="splat-wrapper">
+<canvas id="splat_viewer_DJI_0145-png_1.00_800_none_0_iteration_30000" class="splat-canvas"></canvas>
+</div>
 </div>
 
 
-
-<script type="module">
-import { loadGLBViewer } from "../js/glb_viewer.js";
-
-loadGLBViewer("glb_viewer_DJI_0145-png_1.00_800_none_1","../data/DJI_0145-png_1.00_800_none/mvs/1/scene_dense_mesh_texture_embedded.glb","../data/DJI_0145-png_1.00_800_none/mvs/1/scene_dense_mesh_texture_0.png",'wireframe');
-</script>
+<div class="splat-block">
+<h3>Gaussian Splat: Model 0 (iteration_25000)</h3>
+<div class="splat-wrapper">
+<canvas id="splat_viewer_DJI_0145-png_1.00_800_none_0_iteration_25000" class="splat-canvas"></canvas>
+</div>
+</div>
 
 
 <div class="splat-block">
-<h3>Gaussian Splat: Model 1</h3>
+<h3>Gaussian Splat: Model 0 (iteration_20000)</h3>
 <div class="splat-wrapper">
-<canvas id="splat_viewer_DJI_0145-png_1.00_800_none_1" class="splat-canvas"></canvas>
+<canvas id="splat_viewer_DJI_0145-png_1.00_800_none_0_iteration_20000" class="splat-canvas"></canvas>
+</div>
+</div>
+
+
+<div class="splat-block">
+<h3>Gaussian Splat: Model 0 (iteration_15000)</h3>
+<div class="splat-wrapper">
+<canvas id="splat_viewer_DJI_0145-png_1.00_800_none_0_iteration_15000" class="splat-canvas"></canvas>
+</div>
+</div>
+
+
+<div class="splat-block">
+<h3>Gaussian Splat: Model 0 (iteration_10000)</h3>
+<div class="splat-wrapper">
+<canvas id="splat_viewer_DJI_0145-png_1.00_800_none_0_iteration_10000" class="splat-canvas"></canvas>
+</div>
+</div>
+
+
+<div class="splat-block">
+<h3>Gaussian Splat: Model 0 (iteration_5000)</h3>
+<div class="splat-wrapper">
+<canvas id="splat_viewer_DJI_0145-png_1.00_800_none_0_iteration_5000" class="splat-canvas"></canvas>
 </div>
 </div>
 
@@ -31,13 +57,18 @@ loadGLBViewer("glb_viewer_DJI_0145-png_1.00_800_none_1","../data/DJI_0145-png_1.
 <script type="module">
 import { loadSplatViewer } from "../js/splat_viewer.js";
 
-loadSplatViewer("splat_viewer_DJI_0145-png_1.00_800_none_1", "../data/DJI_0145-png_1.00_800_none/1-gsplat-point_cloud.splat");
+loadSplatViewer("splat_viewer_DJI_0145-png_1.00_800_none_0_iteration_15000", "../data/DJI_0145-png_1.00_800_none/0-iteration_15000-gsplat-point_cloud.splat");
+loadSplatViewer("splat_viewer_DJI_0145-png_1.00_800_none_0_iteration_5000", "../data/DJI_0145-png_1.00_800_none/0-iteration_5000-gsplat-point_cloud.splat");
+loadSplatViewer("splat_viewer_DJI_0145-png_1.00_800_none_0_iteration_10000", "../data/DJI_0145-png_1.00_800_none/0-iteration_10000-gsplat-point_cloud.splat");
+loadSplatViewer("splat_viewer_DJI_0145-png_1.00_800_none_0_iteration_20000", "../data/DJI_0145-png_1.00_800_none/0-iteration_20000-gsplat-point_cloud.splat");
+loadSplatViewer("splat_viewer_DJI_0145-png_1.00_800_none_0_iteration_30000", "../data/DJI_0145-png_1.00_800_none/0-iteration_30000-gsplat-point_cloud.splat");
+loadSplatViewer("splat_viewer_DJI_0145-png_1.00_800_none_0_iteration_25000", "../data/DJI_0145-png_1.00_800_none/0-iteration_25000-gsplat-point_cloud.splat");
 </script>
 
 
 <div class="viewer-block">
-<h3>Sparse Point Cloud: Model 1</h3>
-<div id="ply_viewer_DJI_0145-png_1.00_800_none_1" class="threejs-container"></div>
+<h3>Sparse Point Cloud: Model 0</h3>
+<div id="ply_viewer_DJI_0145-png_1.00_800_none_0" class="threejs-container"></div>
 </div>
 
 
@@ -45,5 +76,5 @@ loadSplatViewer("splat_viewer_DJI_0145-png_1.00_800_none_1", "../data/DJI_0145-p
 <script type="module">
 import { loadPLYViewer } from "../js/ply_viewer.js";
 
-loadPLYViewer("ply_viewer_DJI_0145-png_1.00_800_none_1", "../data/DJI_0145-png_1.00_800_none/1-colmap-points3D.ply");
+loadPLYViewer("ply_viewer_DJI_0145-png_1.00_800_none_0", "../data/DJI_0145-png_1.00_800_none/0-colmap-points3D.ply");
 </script>

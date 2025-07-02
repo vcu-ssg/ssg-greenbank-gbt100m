@@ -66,7 +66,7 @@ def write_index_qmd(tree, destination_folder, data_folder):
         if not project.startswith("DJI"):
             continue
         
-        logger.info( project )
+        #logger.info( project )
         video, info = project.split("-",1)
 
         params = dict(zip(["format", "fps", "maxdim", "filter"], info.split("_")))
@@ -75,7 +75,7 @@ def write_index_qmd(tree, destination_folder, data_folder):
         thumb_video_local_file = (Path(data_folder) / "thumbvids" / f"{video}-thumb.MP4")
         thumb_video_web_url = thumb_video_local_file.relative_to( "docs" )
         
-        logger.info( json.dumps(tree[project],indent=2) )
+        #logger.info( json.dumps(tree[project],indent=2) )
         
         if "colmap" in tree[project]:
             
@@ -218,31 +218,44 @@ import {{ loadGLBViewer }} from "../js/glb_viewer.js";
         lines.append("")
 
     if "gsplat" in contents:
-       
-       
+
         models = sorted(contents["gsplat"].keys())
 
-     
         for model_id in models:
- #           if model_id not in ["files"]:
- #               continue
-            source_file = Path("projects")/ project / "gsplat" / model_id / "point_cloud/point_cloud" / "iteration_30000" / "point_cloud.splat"
-            if not source_file.exists():
+            point_cloud_dir = Path("projects") / project / "gsplat" / model_id / "point_cloud"
+            if not point_cloud_dir.exists():
                 continue
-            destination_file = Path("docs") / "data" / project / f"{model_id}-gsplat-point_cloud.splat"
-            destination_file.parent.mkdir(parents=True, exist_ok=True)
 
-            # Copy file
-            if source_file.is_file():
-                shutil.copy2(source_file, destination_file)
-            else:
-                continue
- 
-            lines.append(f"""
+
+            iteration_dirs = []
+            for iter_dir in point_cloud_dir.iterdir():
+                if iter_dir.is_dir() and iter_dir.name.startswith("iteration_"):
+                    try:
+                        num = int(iter_dir.name.split("_")[1])
+                        iteration_dirs.append((num, iter_dir))
+                    except (IndexError, ValueError):
+                        continue  # skip malformed names
+                        # Sort descending by the number
+            iteration_dirs.sort(reverse=True)
+
+            # Look for iteration_* directories
+            for num, iter_dir in iteration_dirs:
+                splat_file = iter_dir / "point_cloud.splat"
+                if not splat_file.is_file():
+                    continue
+
+                # Build a unique destination filename
+                dest_name = f"{model_id}-{iter_dir.name}-gsplat-point_cloud.splat"
+                destination_file = Path("docs") / "data" / project / dest_name
+                destination_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(splat_file, destination_file)
+
+                # Append to lines with unique id
+                lines.append(f"""
 <div class="splat-block">
-<h3>Gaussian Splat: Model {model_id}</h3>
+<h3>Gaussian Splat: Model {model_id} ({iter_dir.name})</h3>
 <div class="splat-wrapper">
-<canvas id="splat_viewer_{project}_{model_id}" class="splat-canvas"></canvas>
+<canvas id="splat_viewer_{project}_{model_id}_{iter_dir.name}" class="splat-canvas"></canvas>
 </div>
 </div>
 """)
@@ -252,13 +265,19 @@ import {{ loadGLBViewer }} from "../js/glb_viewer.js";
 <script type="module">
 import {{ loadSplatViewer }} from "../js/splat_viewer.js";
 """)
+
         for model_id in models:
-#            if model_id not in ["files"]:
-#                continue
-            source_file = Path("projects")/ project / "gsplat" / model_id / "point_cloud/point_cloud" / "iteration_30000" / "point_cloud.splat"
-            if not source_file.exists():
+            point_cloud_dir = Path("projects") / project / "gsplat" / model_id / "point_cloud"
+            if not point_cloud_dir.exists():
                 continue
-            lines.append(f"loadSplatViewer(\"splat_viewer_{project}_{model_id}\", \"../data/{project}/{model_id}-gsplat-point_cloud.splat\");");
+
+            # Look for iteration_* directories
+            for iter_dir in point_cloud_dir.iterdir():
+                if not iter_dir.is_dir():
+                    continue
+                if not iter_dir.name.startswith("iteration_"):
+                    continue
+                lines.append(f"loadSplatViewer(\"splat_viewer_{project}_{model_id}_{iter_dir.name}\", \"../data/{project}/{model_id}-{iter_dir.name}-gsplat-point_cloud.splat\");");
 
         lines.append(f"</script>")
         lines.append("")

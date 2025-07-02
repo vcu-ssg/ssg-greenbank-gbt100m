@@ -110,33 +110,40 @@ ul.task-list li input[type="checkbox"] {
 <h1>Pipeline: DJI_0145-png_1.00_1600_none</h1>
 <div class="splat-block">
 <h3 class="anchored" data-anchor-id="pipeline-dji_0145-png_1.00_1600_none">
-Textured GLB: Model 3
+Gaussian Splat: Model 0 (iteration_20000)
 </h3>
-<div id="glb_viewer_DJI_0145-png_1.00_1600_none_3" class="threejs-container">
-
+<div class="splat-wrapper">
+<canvas id="splat_viewer_DJI_0145-png_1.00_1600_none_0_iteration_20000" class="splat-canvas">
+</canvas>
 </div>
 </div>
-<script type="module">
-import { loadGLBViewer } from "../js/glb_viewer.js";
-
-loadGLBViewer("glb_viewer_DJI_0145-png_1.00_1600_none_3","../data/DJI_0145-png_1.00_1600_none/mvs/3/scene_dense_mesh_texture_embedded.glb","../data/DJI_0145-png_1.00_1600_none/mvs/3/scene_dense_mesh_texture_0.png",'wireframe');
-</script>
 <script type="module">
 import { loadSplatViewer } from "../js/splat_viewer.js";
 
+loadSplatViewer("splat_viewer_DJI_0145-png_1.00_1600_none_0_iteration_7000", "../data/DJI_0145-png_1.00_1600_none/0-iteration_7000-gsplat-point_cloud.splat");
+loadSplatViewer("splat_viewer_DJI_0145-png_1.00_1600_none_0_iteration_20000", "../data/DJI_0145-png_1.00_1600_none/0-iteration_20000-gsplat-point_cloud.splat");
 </script>
 <div class="viewer-block">
 <h3 class="anchored">
-Sparse Point Cloud: Model 3
+Sparse Point Cloud: Model 0
 </h3>
-<div id="ply_viewer_DJI_0145-png_1.00_1600_none_3" class="threejs-container">
+<div id="ply_viewer_DJI_0145-png_1.00_1600_none_0" class="threejs-container">
+
+</div>
+</div>
+<div class="viewer-block">
+<h3 class="anchored">
+Sparse Point Cloud: Model 1
+</h3>
+<div id="ply_viewer_DJI_0145-png_1.00_1600_none_1" class="threejs-container">
 
 </div>
 </div>
 <script type="module">
 import { loadPLYViewer } from "../js/ply_viewer.js";
 
-loadPLYViewer("ply_viewer_DJI_0145-png_1.00_1600_none_3", "../data/DJI_0145-png_1.00_1600_none/3-colmap-points3D.ply");
+loadPLYViewer("ply_viewer_DJI_0145-png_1.00_1600_none_0", "../data/DJI_0145-png_1.00_1600_none/0-colmap-points3D.ply");
+loadPLYViewer("ply_viewer_DJI_0145-png_1.00_1600_none_1", "../data/DJI_0145-png_1.00_1600_none/1-colmap-points3D.ply");
 </script>
 
 

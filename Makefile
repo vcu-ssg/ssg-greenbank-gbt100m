@@ -3,20 +3,8 @@
 # The gsplat pipeline is managed through judicious naming of projects and folders providing
 # significant flexibility of use.
 
--include Recipes.mak
-
-
 help:
-	@echo ""
-
-# Key targets:
-# Images          : projects/<video>-<format>_<filter>_<fps>_<maxdim>  <filter>=base (DJI_0145-png_base_1.00_1600)  recipe-base-folder
-# Filtered images : projects/<video>-<format>_<filter>_<fps>_<maxdim>  (filtered or greyscale)  recipe-<filter>-folder
-# Base clouds     : projects/<project name>/colmap/sparse/0  recipe-colmap-folder
-# Filtered clouds : projects/<project name>/colmap/sparse/<model>  (0_clean or 0_clean2, etc.) recipe-colmap-<model>-folder
-# gSplats       : projects/<project name>/gsplat/<model>/<filter>  (point_cloud or filter1 or filter2, etc.)
-
-
+	@echo Help goes here
 
 # colmap/sparse/0 : images/  points3D.bin <-
 # colmap/sparse/0_clean : colmap/sparse/0
@@ -82,11 +70,39 @@ filter-roots := none color greyscale
 
 # Models are colmap models like ./sparse/0  ./sparse/0_clean ./sparse/1 etc.
 # 0 is base/default model. Others 
-model-roots := 0 0_filter1 0_filter2 1 2 3
+
+#| Concept       | Values                                     | Meaning / What it controls                                                                                                                    | Independent from...                |
+#| ------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+#| **Extractor** | `default`, `adaptive`, `highres`           | Controls **feature extraction parameters**:<br>• `max_image_size`<br>• optional DSP / octave settings<br>• GPU/threads always on              | matcher, mapper, masking, cleaning |
+#| **Matcher**   | `default`, `fast`, `loop`, `guided`        | Controls **sequential matcher strategy**, e.g.:<br>• overlap<br>• loop detection<br>• guided matching                                         | extractor, mapper, masking, clean  |
+#| **Mapper**    | `default`, `fast`, `robust`, `highquality` | Controls **mapper reconstruction parameters**:<br>• triangulation angles<br>• local BA iterations<br>• min track length<br>• other thresholds | extractor, matcher, masking, clean |
+#| **Mask**      | `open`, `mask1`, `mask2`, ...              | Controls **type of masking filter to generate / apply**. Any value besides `open` becomes `--filter=<mask>`.                                  | extractor, matcher, mapper, clean  |
+#| **Mask Mode** | `extractor`, `direct`                      | • `extractor` uses masks only during `feature_extractor`<br>• `direct` creates new masked images — affects **all following steps**            | extractor, matcher, mapper, clean  |
+#| **Filtering** | `raw`, `clean`                             | Whether to run the **cleaner strategy** after matching (e.g. track length / reprojection error filters).                                      | all above                          |
+
+model-roots := 0 1 2 3
+
+# default, fast options
+colmap-model-0 := mask=open extract=default match=fast mapper=fast
+# apply mask to images, fast options
+colmap-model-1 := mask=default mode=direct extract=default match=fast mapper=fast
+
+# sharper edges around trusses, "2" with mask only during feature detection, "3" with masked images
+colmap-model-2 := mask=default mode=extractor extract=highres match=loop mapper=robust
+colmap-model-3 := mask=default mode=direct    extract=highres match=loop mapper=robust
 
 # GSPLAT post processing folders  (point_cloud is unprocessed)
 
-splat-filter-roots := point_cloud sf0 sf1
+gsplat-model-0 := quality=default
+gsplat-model-1 := quality=default
+
+openmvs-model-0 := densify=fast mesh=fast refine=fast texture=fast
+openmvs-model-1 := densify=highquality mesh=sharp refine=high texture=crisp
+
+
+cfuse-model-0 := patchmatch=fast fusion=fast
+cfuse-model-1 := patchmatch=highquality fusion=robust
+cfuse-model-2 := patchmatch=default fusion=default
 
 # ----------------------
 
@@ -99,6 +115,14 @@ poetry-base = poetry run python scripts/cli.py
 extract-options = --threads=16
 
 
+# ----------------------------------------
+include recipes/Recipes-utils.mak
+include recipes/Recipes-images.mak
+include recipes/Recipes-colmap.mak
+include recipes/Recipes-gsplat.mak
+include recipes/Recipes-openmvs.mak
+include recipes/Recipes-cfuse.mak
+# ----------------------------------------
 
 # Key macros - this is where all the folder wiring happens!
 
@@ -114,10 +138,14 @@ base-roots := $(foreach format,$(format-roots),$(foreach fps,$(fps-roots),$(fore
 images-targets := $(foreach video,$(video-roots),$(projects-folder)/$(foreach base,$(base-roots),$(video)-$(base)/images))
 #$(info $(base-targets))
 
-## THUMBNAIL VIDEOS
 # Use ffmpeg to create folder of images.  No dependencies, just to id.
 # projects/DJI_0150-png_base_0.60_900/images : videos/DJI_0150.MP4 ; $(recipe-base-folder)
-$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(eval $(projects-folder)/$(video)-$(base)/images : $(videos-folder)/$(video).MP4 ; $$(recipe-base-folder))))
+$(foreach video,$(video-roots),\
+	$(foreach base,$(base-roots), \
+		$(eval $(projects-folder)/$(video)-$(base)/images : \
+		$(videos-folder)/$(video).MP4 ; \
+		$$(recipe-images-folder) \
+		)))
 
 
 # COLMAP SPARSE MODEL 
@@ -141,7 +169,7 @@ $(foreach video,$(video-roots), \
 		$(foreach model,$(model-roots), \
 			$(eval $(projects-folder)/$(video)-$(base)/colmap/$(model) : \
 			$(projects-folder)/$(video)-$(base)/images ; \
-			$$(recipe-colmap-folder)$(newline) \
+			$$(recipe-colmap-model)$(newline) \
 			))))
 
 #$(projects-folder)/$(video)-$(base)/$(if $(filter 0,$(model)),images,colmap/0) ;
@@ -165,25 +193,18 @@ $(foreach video,$(video-roots), \
 # projects/DJI_0150-png_1.00_1600_none/gsplat/0_filter2/point_cloud
 
 
-gsplat-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(projects-folder)/$(video)-$(base)/gsplat/$(model))))
-# projects/DJI_0145-base_png_1.00_900/gsplat : projects/DJI_0145-base_png_1.00_900/colmap/sparse/0 ; $(recipe-gsplat-folder)
-$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots), \
-	$(eval $(projects-folder)/$(video)-$(base)/gsplat/$(model) : \
-	$(projects-folder)/$(video)-$(base)/gsplat/$(model)/point_cloud ; $(newline)))))
-
-
 # FILTER THE SPLATS
 # projects/DJI_0150-png_0.60_1600_none/gsplat/0/point_cloud : projects/DJI_0150-png_0.60_1600_none/gsplat/0
 # projects/DJI_0150-png_0.60_1600_none/gsplat/0/sfilt1 : projects/DJI_0150-png_0.60_1600_none/gsplat/0
 # projects/DJI_0150-png_0.60_1600_none/gsplat/0_clean/sfilt2 : projects/DJI_0150-png_0.60_1600_none/gsplat/0/ iteration_30000/point_cloud.ply
 
-gsplat-filter-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(foreach filter,$(splat-filter-roots),$(projects-folder)/$(video)-$(base)/gsplat/$(model)/$(filter)))))
+gsplat-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(projects-folder)/$(video)-$(base)/gsplat/$(model))))
 #gsplat-filter-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(projects-folder)/$(video)-$(base)/gsplat))
 #$(info $(gsplat-filter-targets))
-$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(foreach filter,$(splat-filter-roots), \
-	$(eval $(projects-folder)/$(video)-$(base)/gsplat/$(model)/$(filter) : \
+$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots), \
+	$(eval $(projects-folder)/$(video)-$(base)/gsplat/$(model) : \
 	$(projects-folder)/$(video)-$(base)/colmap/$(model) ; \
-	$$(recipe-gsplat-model)$(newline) )))))
+	$$(recipe-gsplat-model)$(newline) ))))
 	
 
 	
@@ -200,7 +221,7 @@ mvs-targets-2 := $(foreach model,$(model-roots),$(foreach video,$(video-roots),$
 $(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(eval \
 	$(projects-folder)/$(video)-$(base)/mvs/$(model) : \
 	$(projects-folder)/$(video)-$(base)/colmap/$(model) ; \
-	$$(recipe-openmvs2-folder)$(newline)))))
+	$$(recipe-openmvs-model)$(newline)))))
 
 
 # FILTER THE SPLATS
@@ -208,13 +229,31 @@ $(foreach model,$(model-roots),$(foreach video,$(video-roots),$(foreach base,$(b
 # projects/DJI_0150-png_0.60_1600_none/gsplat/0/sfilt1 : projects/DJI_0150-png_0.60_1600_none/gsplat/0
 # projects/DJI_0150-png_0.60_1600_none/gsplat/0_clean/sfilt2 : projects/DJI_0150-png_0.60_1600_none/gsplat/0/ iteration_30000/point_cloud.ply
 
-mvs-filter-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(foreach filter,$(splat-filter-roots),$(projects-folder)/$(video)-$(base)/mvs/$(model)/$(filter)))))
+mvs-filter-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(projects-folder)/$(video)-$(base)/mvs/$(model))))
 #gsplat-filter-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(projects-folder)/$(video)-$(base)/gsplat))
 #$(info $(gsplat-filter-targets))
 $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(foreach filter,$(splat-filter-roots), \
 	$(eval $(projects-folder)/$(video)-$(base)/mvs/$(model)/$(filter) : \
 	$(projects-folder)/$(video)-$(base)/mvs/$(model) ; \
 	$$(recipe-mvs-post-filter)$(newline) )))))
+
+
+cfuse-targets := $(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots),$(projects-folder)/$(video)-$(base)/cfuse/$(model))))
+$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots), \
+	$(eval $(projects-folder)/$(video)-$(base)/cfuse/$(model) : \
+	$(projects-folder)/$(video)-$(base)/colmap/$(model) ; \
+	$$(recipe-cfuse-model)$(newline) ))))
+
+##
+## Build all three
+## projects/DJI_0146-png_1.00_1600_none/all/0  -> gsplat/0 + mvs/0 + cfuse/0  -> colmap/0
+
+$(foreach video,$(video-roots),$(foreach base,$(base-roots),$(foreach model,$(model-roots), \
+	$(eval $(projects-folder)/$(video)-$(base)/all/$(model) : \
+	$(projects-folder)/$(video)-$(base)/gsplat/$(model) \
+	$(projects-folder)/$(video)-$(base)/mvs/$(model) \
+	$(projects-folder)/$(video)-$(base)/cfuse/$(model) ; \
+	))))
 
 
 
@@ -314,6 +353,7 @@ clean-dense-mesh:
 		--binary
 
 build-reports: thumbvids
+	rm -f reports/prj/*.*
 	poetry run python scripts/cli.py \
 	generate-project-reports \
 	--projects-root=projects \
